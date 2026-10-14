@@ -1,0 +1,3 @@
+# GOREV-006 karşılaştırma denemesi; mevcut varsayılan pytest yolu değişmez.
+-r ../../../requirements-pytest.txt
+pywinauto==0.6.9

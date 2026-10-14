@@ -1,0 +1,3 @@
+# Koşu kanıtları kaynak dosyalarının bayt düzeyi SHA-256 özetlerini içerir.
+# Git satır sonlarını dönüştürürse yeni klondaki kanıt doğrulaması bozulur.
+* -text

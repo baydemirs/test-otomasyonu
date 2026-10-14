@@ -1,0 +1,34 @@
+{
+  "sema_surumu": 1,
+  "inceleme_tarihi": "2026-10-13",
+  "dosyalar": [
+    {
+      "dosya": "CANRAT_3min.zip",
+      "sha256": "96d6c69cc5861ba35cfde90c9ff67ad70b230b5ee51ef73527fdff2e7a81e1f1",
+      "boyut": 44397016
+    },
+    {
+      "dosya": "Servis Yazılımı Gösterim Test Prosedürü 1.docx",
+      "sha256": "215acebdbcc298be8ff540a069f4ff5887b066698c97202b2d33eee0a718de2d",
+      "boyut": 13559500
+    },
+    {
+      "dosya": "{23BD7CE0-5D52-4F55-BBF0-763E8AC4C9F4}.png",
+      "sha256": "fcca51a2b1a398aaad3eb4373296c355b9b1ea54ab092aa17fd2c0c9b4f859a2",
+      "boyut": 22111
+    }
+  ],
+  "canrat_kopyalari": [
+    {
+      "arsiv_yolu": "CANRAT_3min/CANRat.exe",
+      "sha256": "0b9bd8141cf4d78e9232a0d4747786692778e44868ffdfe2d7037f2d0902540d",
+      "boyut": 94208
+    },
+    {
+      "arsiv_yolu": "CANRAT_3min/CANRAT (1)/CANRat.exe",
+      "sha256": "7780e0fe1655c458980f9f1f84388a9f59ec9f93d8b22282800a4e975747e3f8",
+      "boyut": 94208
+    }
+  ],
+  "not": "Statik inceleme; uygulama sürümü ve çalışma davranışı doğrulanmadı."
+}

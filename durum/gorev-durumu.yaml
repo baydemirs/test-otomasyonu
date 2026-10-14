@@ -1,0 +1,53 @@
+# Görevlerin güncel durumu ve bağımlılıkları için tek asıl kayıt.
+# Tamamlanma kararları aşağıdaki gerçek koşu ve inceleme kanıtlarına dayanır.
+surum: 11
+gorevler:
+  - id: GOREV-000
+    dosya: gorevler/GOREV-000-uygulamayi-incele.md
+    oncelik: 0
+    durum: tamamlandi
+    bagimliliklar: []
+    engel: null
+    kanitlar: [raporlar/uygulama-incelemesi.md, gereksinimler/kaynak-kaydi.json, raporlar/kosular/inceleme-1d9e47e8120b475695fd24979f21d5c7/arayuz-envanteri.json, raporlar/kosular/inceleme-d5cc5dd8052f457b84d059112219b313/arayuz-envanteri.json, raporlar/kosular/inceleme-d7679e4918a248da89b1d69bad4825e7/arayuz-envanteri.json, raporlar/windows-erisim-farki.md, raporlar/kosular/inceleme-a80d716fb435418097a3c3bf0237a2b0/arayuz-envanteri.json, gereksinimler/CANRAT-UI-002.md]
+  - id: GOREV-001
+    dosya: gorevler/GOREV-001-ilk-demo-testi.md
+    oncelik: 1
+    durum: tamamlandi
+    bagimliliklar: [GOREV-000]
+    engel: null
+    kanitlar: [gereksinimler/CANRAT-UI-002.md, raporlar/canrat-ui-002.md, raporlar/kosular/canrat-ui-002-6b9739a5a4924ba4a0fca7b401aeb47f/sonuc.json, raporlar/kosular/canrat-ui-002-6b9739a5a4924ba4a0fca7b401aeb47f/birim-kontrolleri.txt, raporlar/kosular/canrat-ui-002-6b9739a5a4924ba4a0fca7b401aeb47f/kanit-kontrolu.txt]
+  - id: GOREV-002
+    dosya: gorevler/GOREV-002-demo-denetimi.md
+    oncelik: 2
+    durum: tamamlandi
+    bagimliliklar: [GOREV-001]
+    engel: null
+    kanitlar: [gereksinimler/GOREV-002-denetim-plani.md, raporlar/demo-denetimi.md, raporlar/kosular/denetim-53c20a7efe0a4e6a98f8bed3e29ddb16/mock/mock-summary.json, raporlar/kosular/denetim-53c20a7efe0a4e6a98f8bed3e29ddb16/live/live-summary.json, raporlar/kosular/denetim-53c20a7efe0a4e6a98f8bed3e29ddb16/evidence-final/evidence-summary.json, raporlar/kosular/denetim-53c20a7efe0a4e6a98f8bed3e29ddb16/D10-document/audit-result.json, raporlar/kosular/denetim-53c20a7efe0a4e6a98f8bed3e29ddb16/tamamlama-son.json]
+  - id: GOREV-003
+    dosya: gorevler/GOREV-003-uygulama-yasam-dongusu.md
+    oncelik: 3
+    durum: tamamlandi
+    bagimliliklar: [GOREV-002]
+    engel: null
+    kanitlar: [gorevler/GOREV-003-uygulama-yasam-dongusu.md, raporlar/uygulama-yasam-dongusu.md, raporlar/kosular/yasam-e3da51bf022a4bf49311ac64e927c2b9/sonuc.json, raporlar/kosular/yasam-ec0cd28b53e746119103326a7da341b6/sonuc.json, raporlar/kosular/gorev003-24b7a2ddbd9549ab803cd3a81ae1928e/yasam-kaniti.json, raporlar/kosular/gorev003-24b7a2ddbd9549ab803cd3a81ae1928e/birim-testleri.json, raporlar/kosular/gorev003-24b7a2ddbd9549ab803cd3a81ae1928e/sahte-sahiplik.json, raporlar/kosular/gorev003-24b7a2ddbd9549ab803cd3a81ae1928e/eski-kayit-karsilastirma.json]
+  - id: GOREV-005
+    dosya: gorevler/GOREV-005-pytest-gecis-denemesi.md
+    oncelik: 5
+    durum: tamamlandi
+    bagimliliklar: [GOREV-003]
+    engel: null
+    kanitlar: [gorevler/GOREV-005-pytest-gecis-denemesi.md, raporlar/pytest-gecis-denemesi.md, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/venv-surum.json, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/birim-testleri.json, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/varsayilan-pytest.json, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/kapali-3/pytest-link.json, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/kapali-3/pytest.xml, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/acik/pytest-link.json, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/acik/pytest.xml, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/acik-son-kontrol.json, raporlar/kosular/pytest-gecis-2195a95bf53b4746a3e3aee13c18444c/tamamlama-on-kontrol.json]
+  - id: GOREV-006
+    dosya: gorevler/GOREV-006-pywinauto-karsilastirma.md
+    oncelik: 6
+    durum: tamamlandi
+    bagimliliklar: [GOREV-005]
+    engel: null
+    kanitlar: [gorevler/GOREV-006-pywinauto-karsilastirma.md, raporlar/pywinauto-karsilastirma.md, raporlar/kosular/pywinauto-f0df9212aa884318b759563d910fe261/uyumluluk.json, raporlar/kosular/pywinauto-f0df9212aa884318b759563d910fe261/pip-freeze.json, raporlar/kosular/pywinauto-f0df9212aa884318b759563d910fe261/birim-kontrolleri.json, raporlar/kosular/pywinauto-f0df9212aa884318b759563d910fe261/sahte-kontroller.json, raporlar/kosular/pytest-gecis-6b8e9964c1234f1598af7d622a6cee6f/pywinauto-acik/pytest-link.json, raporlar/kosular/pytest-gecis-6b8e9964c1234f1598af7d622a6cee6f/powershell-acik/pytest-link.json, raporlar/kosular/pytest-gecis-6b8e9964c1234f1598af7d622a6cee6f/pywinauto-kapali-gecerli/pytest-link.json, raporlar/kosular/pytest-gecis-6b8e9964c1234f1598af7d622a6cee6f/pywinauto-kapali/pytest-link.json, raporlar/kosular/pywinauto-f0df9212aa884318b759563d910fe261/karsilastirma-dogrulama.json, raporlar/kosular/pywinauto-f0df9212aa884318b759563d910fe261/eski-kayit-karsilastirma.json]
+  - id: GOREV-007
+    dosya: gorevler/GOREV-007-proje-sadelestirme.md
+    oncelik: 7
+    durum: tamamlandi
+    bagimliliklar: [GOREV-006]
+    engel: null
+    kanitlar: [gorevler/GOREV-007-proje-sadelestirme.md, raporlar/proje-sadelestirme.md, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/dogrulama.json, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/pytest-birim.txt, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/unittest-birim.txt, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/son-surecler.json, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/pytest-link.json, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/pytest.xml]

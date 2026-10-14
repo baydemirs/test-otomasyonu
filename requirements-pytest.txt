@@ -1,0 +1,2 @@
+# Aktif test yürütücüsü. Masaüstü testi varsayılan komutta atlanır.
+pytest==9.1.1

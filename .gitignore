@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+# Ham koşu kayıtları yerel kalır; herkese açık kaynak deposuna eklenmez.
+raporlar/kosular/
+# Yerel ikili uygulama ve geçici çalışma artıkları yayımlanmaz.
+*.exe
+*.dll
+*.obj
+*.tmp
+# Ortama özgü Windows hesap SID bilgisi içeren ham tanı kayıtları yerel kalır.
+raporlar/kosular/erisim-*/
+hedef_uygulama/*
+!hedef_uygulama/README.md
