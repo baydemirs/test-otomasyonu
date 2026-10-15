@@ -54,6 +54,14 @@ Açık tek örneğe bağlanmak için ayrı boş klasör ve `--canrat-initial Exi
 
 Masaüstü koşusunda `<run>/pytest.xml` pytest sonucudur; `<run>/pytest-link.json` aynı koşunun yaşam döngüsü `sonuc.json` ve UI `sonuc.json` yollarını içerir. Yalnız pytest çıkış kodu başarı kanıtı değildir; `otomasyon/dogrulama/pytest_dogrula.py` bağlı JSON'ları, süreç sahipliğini ve Off → On → Off durumlarını denetler. Eski koşu kayıtları tarihsel kanıttır; taşınan kaynakların güncel sürümüne ait kanıt sayılmaz.
 
+Koşuya ait okunabilir, bağımsız HTML raporu üretmek ve açmak için:
+
+```powershell
+.\.venv\Scripts\python.exe otomasyon/dogrulama/html_rapor.py --folder $run
+Start-Process "$run/rapor.html"
+```
+
 Herkese açık kaynak deposu ham `raporlar/kosular/` kayıtlarını içermez. Geçmiş görev kanıtlarının doğrulanması için yerel çalışma alanı gerekir; yeni klonda eksik kanıtı başarılı doğrulama saymayın.
 
-Şimdiki kapsam tek kutu testidir. CAN haberleşmesi, Start işlemi, toplu masaüstü testleri ve HTML raporu desteklenmez. `.venv` ve önbellekler yerel ortamda kalır; kaynak/teslim kapsamı dışındadır.
+Şimdiki kapsam tek kutu testidir. CAN haberleşmesi, Start işlemi ve toplu test bağımlılıkları desteklenmez. Tekil koşular için yerel HTML raporu desteklenir. `.venv` ve önbellekler yerel ortamda kalır; kaynak/teslim kapsamı dışındadır.
+

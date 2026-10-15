@@ -4,7 +4,17 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import yasam_dogrula
-from ortak import project_path as _project_path, read_json, require, require_versions
+from ortak import (
+    check_guard_consistency,
+    check_states_match,
+    check_ticks_validity,
+    check_xml_cases,
+    evaluate_run_evidence,
+    project_path as _project_path,
+    read_json,
+    require,
+    require_versions,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +30,11 @@ def check(folder, expected):
     folder = project_path(folder)
     require(folder.parent.name.startswith('pytest-gecis-') and
             folder.parent.parent == ROOT/'raporlar/kosular', 'Beklenmeyen pytest kanit klasoru.')
+    info = evaluate_run_evidence(folder, root=ROOT, expected_branch=expected)
+    require(info['verification_status'] == 'DOGRULANDI',
+            f"Kanıt doğrulanamadı: {'; '.join(info['reasons'])}")
+    require(info['recorded_result'] == 'GECTI',
+            f"Kayıtlı test sonucu GECTI değil: {info['recorded_result']}")
     link = read_json(folder/'pytest-link.json')
     require(link['task'] == 'GOREV-005' and link.get('adapter', 'powershell') == 'powershell' and
             link['test_id'] == 'CANRAT-UI-002' and
@@ -44,6 +59,16 @@ def check(folder, expected):
     require(ui['test_sonucu'] == 'GECTI' and ui['gozlem']['restored'] is True and
             [ui['gozlem'][key] for key in ('initial', 'changed', 'final')] == ['Off', 'On', 'Off'],
             'UI sonucu/geri yuklemesi beklenmiyor.')
+    v_states, err_states = check_states_match(link['observed_states'], [ui['gozlem'][k] for k in ('initial', 'changed', 'final')])
+    require(v_states, err_states)
+    v_ticks, err_ticks = check_ticks_validity(ui['gozlem'].get('process_start_ticks'))
+    require(v_ticks, err_ticks)
+    for g in ui['gozlem'].get('guard_before', []):
+        v_g, err_g = check_guard_consistency(g)
+        require(v_g, err_g)
+    if ui['gozlem'].get('guard_after'):
+        v_g, err_g = check_guard_consistency(ui['gozlem']['guard_after'])
+        require(v_g, err_g)
     observed = life['observed']
     require(link['process_id'] == observed['identity']['pid'] and
             link['process_start_ticks'] == observed['identity']['start_ticks'] and
@@ -51,6 +76,8 @@ def check(folder, expected):
             [observed['start']['status'], observed['test']['status'], observed['close']['status']],
             'Asama veya surec kimligi farkli.')
     xml = ET.parse(folder/'pytest.xml').getroot()
+    v_xml, err_xml, *_ = check_xml_cases(xml)
+    require(v_xml, err_xml)
     suites = list(xml.iter('testsuite'))
     cases = list(xml.iter('testcase'))
     require(len(suites) == len(cases) == 1 and

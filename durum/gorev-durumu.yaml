@@ -1,6 +1,6 @@
 # Görevlerin güncel durumu ve bağımlılıkları için tek asıl kayıt.
 # Tamamlanma kararları aşağıdaki gerçek koşu ve inceleme kanıtlarına dayanır.
-surum: 11
+surum: 21
 gorevler:
   - id: GOREV-000
     dosya: gorevler/GOREV-000-uygulamayi-incele.md
@@ -50,4 +50,14 @@ gorevler:
     durum: tamamlandi
     bagimliliklar: [GOREV-006]
     engel: null
-    kanitlar: [gorevler/GOREV-007-proje-sadelestirme.md, raporlar/proje-sadelestirme.md, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/dogrulama.json, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/pytest-birim.txt, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/unittest-birim.txt, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/son-surecler.json, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/pytest-link.json, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/pytest.xml]
+    kanitlar: [gorevler/GOREV-007-proje-sadelestirme.md, raporlar/proje-sadelestirme.md, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/dogrulama.json, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/pytest-birim.txt, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/unittest-birim.txt, raporlar/kosular/sadelestirme-65d5cf1cae154433b7bdff0895c94318/son-surecler.json, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/pytest-link.json, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/pytest.xml, raporlar/kosular/pytest-gecis-34acf074e3ef475a9f877fb17f13991f/acik/pytest-link.json, raporlar/kosular/pytest-gecis-34acf074e3ef475a9f877fb17f13991f/acik/pytest.xml]
+  - id: GOREV-008
+    dosya: gorevler/GOREV-008-html-rapor.md
+    oncelik: 8
+    durum: tamamlandi
+    bagimliliklar: [GOREV-007]
+    engel: null
+    kanitlar: [gorevler/GOREV-008-html-rapor.md, otomasyon/dogrulama/ortak.py, otomasyon/dogrulama/html_rapor.py, tests/unit/test_html_rapor.py, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/rapor.html, raporlar/kosular/pytest-gecis-34acf074e3ef475a9f877fb17f13991f/acik/rapor.html]
+
+
+

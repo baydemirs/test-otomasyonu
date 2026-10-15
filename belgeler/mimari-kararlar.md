@@ -48,8 +48,13 @@ Sahiplik yalnız başarılı başlatma ile edinilir; her işlem PID + UTC başla
 
 ## Karar 10 Pytest geçişinin sınırı
 
-2026-10-14 GOREV-005 kapsamında eklenen tek masaüstü pytest testi aktif yürütme yoludur. Pytest proje `.venv` ortamında sürüme sabitlenir; yaşam döngüsü/PowerShell/UIA kodu kullanılır. `--run-desktop` yoksa masaüstü testi atlanır. Pytest XML sonucu ve uygulama JSON kanıtları ayrı kayıtlar olarak bağlanır ve doğrulanır. Toplu masaüstü testleri ve HTML rapor altyapısı mevcut kapsamda değildir.
+2026-10-14 GOREV-005 kapsamında eklenen tek masaüstü pytest testi aktif yürütme yoludur. Pytest proje `.venv` ortamında sürüme sabitlenir; yaşam döngüsü/PowerShell/UIA kodu kullanılır. `--run-desktop` yoksa masaüstü testi atlanır. Pytest XML sonucu ve uygulama JSON kanıtları ayrı kayıtlar olarak bağlanır ve doğrulanır. Toplu masaüstü testleri mevcut kapsamda değildir; tekil koşular için bağımsız HTML rapor üretimi GOREV-008 ile desteklenmektedir.
 
 ## Karar 11 Alternatif pywinauto yolu
 
 2026-10-14 GOREV-006, pywinauto 0.6.9 ile gerçek CanRat üzerinde tamamlanan karşılaştırma denemesidir. Sonuçlar [karşılaştırma raporunda](../raporlar/pywinauto-karsilastirma.md), deneme kodu ve sürüm bilgisi `otomasyon/arsiv/pywinauto/` altındadır. Aktif pytest testinde adaptör seçimi yoktur; PowerShell/UIA tek varsayılan yoldur. Tarihsel koşu kanıtları değiştirilmez. Karşılaştırmanın sınırı tek kontrol ve tek gerçek CanRat sürümüdür; sonuç başka Qt/Windows sürümlerine otomatik genellenmez.
+
+## Karar 12 Gelecek ihtiyaç: Ortam hazırlığı, bağımlılık ve temizlik akışı
+
+Ana servis yazılımında bazı senaryolar ortam hazırlığına veya başka testlerin sonuçlarına bağlı olabilir. Gerçek gereksinimler geldiğinde hazırlık, bağımlılık ve temizlik akışı tasarlanacaktır. Şimdilik bu işlevler geliştirilmez ve varsayımsal örnek senaryo üretilmez.
+
