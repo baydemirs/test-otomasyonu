@@ -1,6 +1,6 @@
 # Görevlerin güncel durumu ve bağımlılıkları için tek asıl kayıt.
 # Tamamlanma kararları aşağıdaki gerçek koşu ve inceleme kanıtlarına dayanır.
-surum: 21
+surum: 33
 gorevler:
   - id: GOREV-000
     dosya: gorevler/GOREV-000-uygulamayi-incele.md
@@ -58,6 +58,20 @@ gorevler:
     bagimliliklar: [GOREV-007]
     engel: null
     kanitlar: [gorevler/GOREV-008-html-rapor.md, otomasyon/dogrulama/ortak.py, otomasyon/dogrulama/html_rapor.py, tests/unit/test_html_rapor.py, raporlar/kosular/pytest-gecis-9bbd1a1f468f4cd3a5372a4b430a95b4/kapali/rapor.html, raporlar/kosular/pytest-gecis-34acf074e3ef475a9f877fb17f13991f/acik/rapor.html]
+  - id: GOREV-004
+    dosya: gorevler/GOREV-004-teslim-hazirligi.md
+    oncelik: 9
+    durum: tamamlandi
+    bagimliliklar: [GOREV-008]
+    engel: null
+    kanitlar: [gorevler/GOREV-004-teslim-hazirligi.md, belgeler/teslim-bilesenleri.md, tests/unit/test_yasam_kaniti.py, tests/unit/test_kosu_dogrula.py, otomasyon/dogrulama/demo_dogrula.py, README.md, raporlar/temiz-klon-dogrulama.json, raporlar/kosular/pytest-gecis-6b26d20f2a37499d988fc9fa6f329b57/kapali/rapor.html]
+  - id: GOREV-009
+    dosya: gorevler/GOREV-009-kanit-guvenligi-ve-rapor-korumasi.md
+    oncelik: 10
+    durum: tamamlandi
+    bagimliliklar: [GOREV-004]
+    engel: null
+    kanitlar: [gorevler/GOREV-009-kanit-guvenligi-ve-rapor-korumasi.md, otomasyon/dogrulama/ortak.py, otomasyon/dogrulama/html_rapor.py, tests/unit/test_html_rapor.py]
 
 
 

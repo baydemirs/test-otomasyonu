@@ -78,6 +78,19 @@ class TaskRegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'proje dışına'):
             self.validate()
 
+    def test_structure_only_ignores_missing_evidence_file(self):
+        (self.root/'proof.json').unlink()
+        (self.root/'durum/gorev-durumu.yaml').write_text('surum: 1\ngorevler:\n'+''.join(self.tasks), encoding='utf-8')
+        # check_evidence=False passes even if evidence file is missing
+        tasks = validator.validate_tasks(self.root, check_evidence=False)
+        self.assertEqual(len(tasks), 4)
+
+    def test_structure_only_still_requires_task_file(self):
+        (self.root/'task-3.md').unlink()
+        (self.root/'durum/gorev-durumu.yaml').write_text('surum: 1\ngorevler:\n'+''.join(self.tasks), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'Görev dosyası yok'):
+            validator.validate_tasks(self.root, check_evidence=False)
+
 
 if __name__ == '__main__':
     unittest.main()

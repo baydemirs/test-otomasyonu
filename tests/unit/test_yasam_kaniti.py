@@ -1,20 +1,142 @@
-"""Synthetic mutations of real records; these are NOT additional UI runs."""
+"""Sentetik fixture tabanlı yaşam döngüsü kontrolleri.
+
+Geçmiş ham dosyalara bağımlı olmadan temiz klonlarda bağımsız çalışır.
+Mevcut tüm 10 anlamsal kontrolü (sahiplik, çoklu süreç, PID yeniden kullanımı,
+kapatma isteği, çalışma dizini, temizlik hatası, süreç kalıntısı, alt süreç kimliği,
+eksik günlük) aynen korur.
+"""
 import copy
-import json
 from pathlib import Path
 import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT/'otomasyon/dogrulama'))
+sys.path.insert(0, str(ROOT / 'otomasyon/dogrulama'))
 import yasam_dogrula as validator
 
 
+def make_mock_existing():
+    exe_str = str(ROOT / 'hedef_uygulama/CANRAT_3min/CANRat.exe')
+    workdir_str = str(ROOT / 'hedef_uygulama/CANRAT_3min')
+    return {
+        "schema_version": 1,
+        "task": "GOREV-003",
+        "expected": "Existing",
+        "result": "GECTI",
+        "error": None,
+        "cleanup_error": None,
+        "before": [
+            {
+                "pid": 18480,
+                "start_ticks": "639274711768917415",
+                "path": exe_str,
+                "window": 263894,
+            }
+        ],
+        "identity": {
+            "pid": 18480,
+            "start_ticks": "639274711768917415",
+            "path": exe_str,
+            "window": 263894,
+        },
+        "owned": False,
+        "working_directory": workdir_str,
+        "start": {
+            "status": "MEVCUDA_BAGLANILDI",
+            "exe": exe_str,
+            "window": 263894,
+            "window_ready": True,
+        },
+        "test": {
+            "status": "GECTI",
+            "exit_code": 0,
+            "observed_identity": {
+                "pid": 18480,
+                "start_ticks": "639274711768917415",
+            },
+        },
+        "close": {
+            "status": "ACIK_BIRAKILDI",
+            "request_sent": False,
+            "still_running": True,
+        },
+        "after": [
+            {
+                "pid": 18480,
+                "start_ticks": "639274711768917415",
+                "path": exe_str,
+                "window": 263894,
+            }
+        ],
+        "events": [
+            {"phase": "before", "time_utc": "2026-10-13T12:03:12.800000+00:00"},
+            {"phase": "identity", "time_utc": "2026-10-13T12:03:12.810000+00:00"},
+            {"phase": "window_ready", "time_utc": "2026-10-13T12:03:12.820000+00:00"},
+            {"phase": "test_start", "time_utc": "2026-10-13T12:03:12.830000+00:00"},
+            {"phase": "test_finished", "time_utc": "2026-10-13T12:03:12.840000+00:00"},
+            {"phase": "finished", "time_utc": "2026-10-13T12:03:12.850000+00:00"},
+        ],
+    }
+
+
+def make_mock_closed():
+    exe_str = str(ROOT / 'hedef_uygulama/CANRAT_3min/CANRat.exe')
+    workdir_str = str(ROOT / 'hedef_uygulama/CANRAT_3min')
+    return {
+        "schema_version": 1,
+        "task": "GOREV-003",
+        "expected": "Closed",
+        "result": "GECTI",
+        "error": None,
+        "cleanup_error": None,
+        "before": [],
+        "identity": {
+            "pid": 21568,
+            "start_ticks": "639274898668202904",
+            "path": exe_str,
+            "window": 2033372,
+        },
+        "owned": True,
+        "working_directory": workdir_str,
+        "start": {
+            "status": "BASLATILDI",
+            "exe": exe_str,
+            "working_directory": workdir_str,
+            "window": 2033372,
+            "window_ready": True,
+        },
+        "test": {
+            "status": "GECTI",
+            "exit_code": 0,
+            "observed_identity": {
+                "pid": 21568,
+                "start_ticks": "639274898668202904",
+            },
+        },
+        "close": {
+            "status": "KAPANDI",
+            "method": "CloseMainWindow",
+            "request_sent": True,
+            "exited": True,
+            "exit_code": 0,
+        },
+        "after": [],
+        "events": [
+            {"phase": "before", "time_utc": "2026-10-13T12:04:25.570000+00:00"},
+            {"phase": "launch_intent", "time_utc": "2026-10-13T12:04:25.580000+00:00"},
+            {"phase": "identity", "time_utc": "2026-10-13T12:04:25.590000+00:00"},
+            {"phase": "window_ready", "time_utc": "2026-10-13T12:04:25.600000+00:00"},
+            {"phase": "test_start", "time_utc": "2026-10-13T12:04:25.610000+00:00"},
+            {"phase": "test_finished", "time_utc": "2026-10-13T12:04:25.620000+00:00"},
+            {"phase": "finished", "time_utc": "2026-10-13T12:04:25.630000+00:00"},
+        ],
+    }
+
+
 class LifecycleEvidenceTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.existing = json.loads((ROOT/'raporlar/kosular/yasam-e3da51bf022a4bf49311ac64e927c2b9/sonuc.json').read_text(encoding='utf-8'))['observed']
-        cls.closed = json.loads((ROOT/'raporlar/kosular/yasam-ec0cd28b53e746119103326a7da341b6/sonuc.json').read_text(encoding='utf-8'))['observed']
+    def setUp(self):
+        self.existing = make_mock_existing()
+        self.closed = make_mock_closed()
 
     def reject(self, source, expected, change):
         observed = copy.deepcopy(source)

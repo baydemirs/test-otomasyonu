@@ -14,8 +14,15 @@ Windows'ta proje kökünden çalıştırın. Hedef `hedef_uygulama/CANRAT_3min/C
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-pytest.txt
 .\.venv\Scripts\python.exe -m pytest -q
+
+# Temiz klonda (geçmiş ham kanıtlar olmadan) görev yapısı ve bağımlılık kontrolü:
+.\.venv\Scripts\python.exe otomasyon/dogrulama/demo_dogrula.py --structure-only
+
+# Yerel geliştirme ortamında geçmiş kanıt dosyalarının varlığıyla birlikte tam kontrol:
 .\.venv\Scripts\python.exe otomasyon/dogrulama/demo_dogrula.py --tasks-only
 ```
+
+Teslim bileşenleri, paketleme modeli ve sınırlar hakkında ayrıntılı bilgi [Teslim Bileşenleri](belgeler/teslim-bilesenleri.md) belgesindedir.
 
 Varsayılan `pytest -q` yalnız birim kontrollerini çalıştırır; masaüstü testini atlar. Gerçek masaüstü testi, uygulamanın açık veya kapalı olduğunu önce doğrulayarak **ayrıca** çalıştırılır. `Existing`, kullanıcının açık örneğine bağlanır ve açık bırakır; `Closed`, yalnız kendi açtığı örneği normal yoldan kapatır. Birden fazla örnek hata kabul edilir. Örnek kapalı başlangıç komutu:
 
@@ -27,7 +34,7 @@ $argv = @($python, '-m', 'pytest', '-q', 'tests/desktop/test_canrat_ui_002_pytes
 & $python @($argv[1..($argv.Count-1)])
 $code = $LASTEXITCODE
 $json = @{ argv = $argv; exit_code = $code } | ConvertTo-Json -Depth 4
-[IO.File]::WriteAllText((Join-Path $run 'pytest-komut.json'), $json, (New-Object Text.UTF8Encoding($false)))
+[IO.File]::WriteAllText((Join-Path (Resolve-Path $run).ProviderPath 'pytest-komut.json'), $json, (New-Object Text.UTF8Encoding($false)))
 if ($code -ne 0) { throw "Pytest başarısız: $code" }
 .\.venv\Scripts\python.exe otomasyon/dogrulama/pytest_dogrula.py --folder $run --expected Closed
 ```

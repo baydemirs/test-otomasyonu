@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ortak import evaluate_run_evidence
+from ortak import evaluate_run_evidence, resolve_linked_path
 
 
 def evaluate_run(folder_path):
@@ -22,8 +22,42 @@ def evaluate_run(folder_path):
     return evaluate_run_evidence(folder_path, root=ROOT)
 
 
+def validate_output_path(folder, target):
+    """HTML rapor çıktısının uzantısını ve ham kanıt dosyalarını ezmediğini denetler."""
+    folder = Path(folder).resolve()
+    target = Path(target).resolve()
 
-def render_html(info):
+    if target.is_dir():
+        raise ValueError(f"Rapor hedefi bir dizin olamaz: {target}")
+
+    # Ham kanıt dosyalarını ezmeyi engelle
+    protected_files = set()
+    for cand in folder.glob("*"):
+        if cand.is_file():
+            if cand.suffix.lower() not in ('.html', '.htm') or cand.name in ('pytest.xml', 'pytest-link.json', 'pytest-komut.json', 'sonuc.json', 'uia-adimlari.json', 'yasam-adimlari.json'):
+                protected_files.add(cand.resolve())
+
+    link_file = folder / "pytest-link.json"
+    if link_file.is_file():
+        protected_files.add(link_file.resolve())
+        try:
+            ld = json.loads(link_file.read_text(encoding="utf-8"))
+            for k in ("lifecycle_report", "ui_report", "ui_journal", "lifecycle_journal"):
+                if ld.get(k):
+                    resolved = resolve_linked_path(folder, ld[k], ROOT)
+                    if resolved and resolved.is_file():
+                        protected_files.add(resolved.resolve())
+        except Exception:
+            pass
+
+    if target in protected_files or target.name in ('pytest.xml', 'pytest-link.json', 'pytest-komut.json', 'sonuc.json', 'uia-adimlari.json', 'yasam-adimlari.json'):
+        raise ValueError(f"Ham kanıt dosyası üzerine HTML rapor yazılamaz: {target}")
+
+    if target.suffix.lower() not in ('.html', '.htm'):
+        raise ValueError(f"Geçersiz rapor dosya uzantısı: '{target.suffix}'. Yalnızca .html veya .htm uzantısı kabul edilir.")
+
+
+def render_html(info, base_dir=None):
     """Tamamen bağımsız, harici kaynak gerektirmeyen HTML rapor üretir."""
     is_verified = (info["verification_status"] == "DOGRULANDI")
     badge_text = info["badge_text"]
@@ -39,14 +73,14 @@ def render_html(info):
 
     # Göreli linkler oluştur
     links_html = []
-    folder = info["folder"]
+    base = (info["folder"] if base_dir is None else Path(base_dir)).resolve()
     for item in info["links"]:
         name = html.escape(item["name"])
         desc = html.escape(item["desc"])
         exists = item["exists"]
         if exists:
             try:
-                rel = os.path.relpath(item["path"], folder).replace("\\", "/")
+                rel = os.path.relpath(item["path"], base).replace("\\", "/")
                 link_tag = f'<a href="{html.escape(rel)}">{name}</a>'
                 status_badge = '<span class="status-pill pass">Mevcut</span>'
             except Exception:
@@ -436,9 +470,12 @@ def generate_report(folder_path, output_path=None):
     if not folder.is_dir():
         raise FileNotFoundError(f"Koşu klasörü bulunamadı: {folder}")
 
-    info = evaluate_run(folder)
     target = (folder / "rapor.html") if output_path is None else Path(output_path).resolve()
-    content = render_html(info)
+    validate_output_path(folder, target)
+
+    info = evaluate_run(folder)
+    content = render_html(info, base_dir=target.parent)
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
     return target, info
 

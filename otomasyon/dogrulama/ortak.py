@@ -219,10 +219,22 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                 missing_evidence.append("pytest-link.json dosyası boş")
             else:
                 link_data = json.loads(raw_text)
+                for req_key in ("test_id", "run_id", "status", "exit_code"):
+                    val = link_data.get(req_key)
+                    if val is None or (isinstance(val, str) and not val.strip()):
+                        missing_evidence.append(f"pytest-link.json zorunlu alan eksik: '{req_key}'")
+
+                link_test_id = link_data.get("test_id")
+                if link_test_id and link_test_id != "CANRAT-UI-002":
+                    contradictions.append(f"Köprü test_id ('{link_test_id}') beklenen senaryoyla ('CANRAT-UI-002') eşleşmiyor.")
+
                 info["test_id"] = link_data.get("test_id", info["test_id"])
+                info["run_id"] = link_data.get("run_id", info["run_id"])
                 branch_in_link = link_data.get("expected_branch")
                 if branch_in_link:
                     info["branch"] = branch_in_link
+                else:
+                    missing_evidence.append("pytest-link.json expected_branch eksik veya boş.")
                 if expected_branch and branch_in_link and branch_in_link != expected_branch:
                     contradictions.append(f"Başlangıç modu uyumsuz: beklenen {expected_branch}, köprüde {branch_in_link}")
 
@@ -242,16 +254,43 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                 link_status = link_data.get("status")
                 exit_code = link_data.get("exit_code", 0)
 
-                # Link çıkış kodu ve status tutarlılığı
-                if link_status == "DOGRULANDI" and exit_code != 0:
-                    contradictions.append(f"pytest-link status 'DOGRULANDI' fakat exit_code={exit_code}")
-                if link_status == "DOGRULANDI" and link_data.get("error"):
-                    contradictions.append(f"pytest-link status 'DOGRULANDI' fakat error alanı dolu: '{link_data.get('error')}'")
-                if exit_code != 0 and link_status == "DOGRULANDI":
-                    contradictions.append(f"pytest çıkış kodu {exit_code} iken köprü durumu DOGRULANDI olamaz")
+                ALLOWED_LINK_STATUSES = {"DOGRULANDI", "KALDI", "HATA", "ATLANDI"}
+                if not link_status or link_status not in ALLOWED_LINK_STATUSES:
+                    contradictions.append(f"Bilinmeyen veya geçersiz pytest-link status değeri: '{link_status}' (İzin verilenler: DOGRULANDI, KALDI, HATA, ATLANDI)")
 
-                exp_states = link_data.get("expected_states") or []
-                obs_states = link_data.get("observed_states") or []
+                link_run_id = link_data.get("run_id")
+                if link_run_id is not None and link_run_id != folder.name:
+                    contradictions.append(f"Köprü run_id ({link_run_id}) koşu klasörünün adıyla ({folder.name}) eşleşmiyor.")
+
+                # Link çıkış kodu ve status tutarlılığı
+                if link_status == "DOGRULANDI":
+                    if exit_code != 0:
+                        contradictions.append(f"pytest-link status 'DOGRULANDI' fakat exit_code={exit_code}")
+                    if link_data.get("error"):
+                        contradictions.append(f"pytest-link status 'DOGRULANDI' fakat error alanı dolu: '{link_data.get('error')}'")
+                    if link_pid is None:
+                        missing_evidence.append("pytest-link.json process_id eksik")
+                    v_lticks, err_lticks = check_ticks_validity(link_data.get("process_start_ticks"))
+                    if not v_lticks:
+                        missing_evidence.append(f"pytest-link {err_lticks}")
+
+                exp_states = link_data.get("expected_states")
+                obs_states = link_data.get("observed_states")
+                if exp_states is not None:
+                    if not isinstance(exp_states, list) or len(exp_states) != 3 or any(s not in ("Off", "On") for s in exp_states):
+                        contradictions.append(f"pytest-link.json expected_states ({exp_states}) geçersiz; 3 elemanlı 'Off'/'On' dizisi olmalıdır.")
+                    else:
+                        if exp_states[0] == exp_states[1]:
+                            contradictions.append(f"pytest-link.json expected_states ({exp_states}) başlangıç ile karşıt durum aynı olamaz.")
+                        if exp_states[0] != exp_states[2]:
+                            contradictions.append(f"pytest-link.json expected_states ({exp_states}) başlangıç durumuna geri dönüş içermelidir.")
+
+                if link_status == "DOGRULANDI":
+                    if not exp_states or not isinstance(exp_states, list) or len(exp_states) != 3:
+                        missing_evidence.append("pytest-link.json beklenen durumlar (expected_states) eksik veya geçersiz")
+                    if not obs_states or not isinstance(obs_states, list) or len(obs_states) != 3:
+                        missing_evidence.append("pytest-link.json gözlemlenen durumlar (observed_states) eksik veya geçersiz")
+
                 if exp_states:
                     info["states"]["initial_expected"] = exp_states[0]
                     if len(exp_states) > 1:
@@ -282,6 +321,7 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
     ui_data = None
     ui_result = None
     ui_hata = None
+    obs = None
     ui_path = resolve_linked_path(folder, link_data.get("ui_report") if link_data else None, root)
     if ui_path and ui_path.is_file():
         info["links"].append({"name": "UI sonuc.json", "path": ui_path, "desc": "CANRAT-UI-002 UIA işlem kanıtı", "exists": True})
@@ -292,11 +332,27 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
             else:
                 ui_data = json.loads(raw_ui)
                 ui_result = ui_data.get("test_sonucu")
-                ui_hata = ui_data.get("hata") or ui_data.get("error")
+                ui_hata = ui_data.get("hata") or ui_data.get("error") or ui_data.get("geri_yukleme_hatasi") or ui_data.get("kurtarma")
 
-                # UI hata alanı dolu mu?
-                if ui_hata:
-                    contradictions.append(f"UI hata alanı dolu: '{ui_hata}'")
+                # UI test_id ve calistirma_id doğrulaması
+                ui_test_id = ui_data.get("test_id")
+                if ui_test_id is None or not str(ui_test_id).strip():
+                    missing_evidence.append("UI test_id eksik veya boş.")
+                elif ui_test_id != "CANRAT-UI-002":
+                    contradictions.append(f"UI test_id ('{ui_test_id}') beklenen senaryoyla ('CANRAT-UI-002') eşleşmiyor.")
+
+                if link_data and link_data.get("test_id") and ui_test_id and link_data["test_id"] != ui_test_id:
+                    contradictions.append(f"Köprü test_id ('{link_data['test_id']}') ile UI test_id ('{ui_test_id}') eşleşmiyor.")
+
+                ui_calistirma_id = ui_data.get("calistirma_id")
+                if ui_calistirma_id is None or not str(ui_calistirma_id).strip():
+                    missing_evidence.append("UI calistirma_id eksik veya boş.")
+                elif ui_calistirma_id != ui_path.parent.name:
+                    contradictions.append(f"UI calistirma_id ('{ui_calistirma_id}') kendi kayıt klasörünün adıyla ('{ui_path.parent.name}') eşleşmiyor.")
+
+                # UI hata alanı dolu mu? (Yalnızca GECTI iddiası varken çelişkidir; HATA kaydında açıklayıcı bilgidir)
+                if ui_hata and ui_result == "GECTI":
+                    contradictions.append(f"UI test_sonucu 'GECTI' fakat hata alanı dolu: '{ui_hata}'")
 
                 obs = ui_data.get("gozlem")
                 if not isinstance(obs, dict) or not obs:
@@ -304,10 +360,39 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                 else:
                     obs_error = obs.get("error")
                     obs_cleanup_error = obs.get("cleanup_error")
-                    if obs_error:
-                        contradictions.append(f"UI gözlem hata alanı dolu: '{obs_error}'")
-                    if obs_cleanup_error:
-                        contradictions.append(f"UI temizleme/geri yükleme hata alanı dolu: '{obs_cleanup_error}'")
+                    obs_cleanup_journal_error = obs.get("cleanup_journal_error")
+                    if obs_error and ui_result == "GECTI":
+                        contradictions.append(f"UI gözlem hata alanı dolu iken test GECTI olamaz: '{obs_error}'")
+                    if obs_cleanup_error and ui_result == "GECTI":
+                        contradictions.append(f"UI temizleme/geri yükleme hata alanı dolu iken test GECTI olamaz: '{obs_cleanup_error}'")
+                    if obs_cleanup_journal_error and ui_result == "GECTI":
+                        contradictions.append(f"UI temizleme günlüğü hatası mevcut iken test GECTI olamaz: '{obs_cleanup_journal_error}'")
+
+                    if ui_result == "GECTI":
+                        if obs.get("schema_version") != 1:
+                            contradictions.append(f"Geçersiz veya eksik UI şema sürümü: {obs.get('schema_version')}")
+                        if obs.get("mode") != "Exercise":
+                            contradictions.append(f"Geçersiz UI modu: '{obs.get('mode')}' (beklenen: 'Exercise')")
+                        if obs.get("phase") != "completed":
+                            contradictions.append(f"UI aşaması tamamlanmamış (phase: '{obs.get('phase')}')")
+
+                        events = obs.get("events")
+                        if isinstance(events, list):
+                            phases = [e.get("phase") for e in events if isinstance(e, dict)]
+                            expected_phases = ['initial_saved', 'toggle_attempt', 'change_observed', 'restoring', 'completed']
+                            if phases != expected_phases:
+                                contradictions.append(f"UI işlem adımları eksik veya sırası bozuk: {phases}")
+                        else:
+                            missing_evidence.append("UI gözlem olayları (events) eksik")
+
+                        if obs.get("mutation_attempted") is not True:
+                            contradictions.append("UI kutu değiştirme denemesi yapılmadı (mutation_attempted=True değil)")
+                        if obs.get("cleanup_attempted") is not True:
+                            contradictions.append("UI temizleme denemesi yapılmadı (cleanup_attempted=True değil)")
+                        if obs.get("changed_verified") is not True:
+                            contradictions.append("UI kutu değişimi doğrulanmadı (changed_verified=True değil)")
+                        if obs.get("restored") is not True:
+                            contradictions.append("UI kutusunun geri yüklendiği doğrulanmadı (restored=True değil)")
 
                     initial = obs.get("initial")
                     exp_changed = obs.get("expected_changed")
@@ -359,16 +444,35 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                     if link_ticks and ui_ticks and ui_ticks != link_ticks:
                         contradictions.append("UI süreç start_ticks değeri köprü ile uyuşmuyor")
 
+                # UI Journal (uia-adimlari.json) kontrolü
+                uij_ref = link_data.get("ui_journal") if link_data else None
+                uij_path = resolve_linked_path(folder, uij_ref, root) if uij_ref else (ui_path.parent / "uia-adimlari.json")
+                if not uij_path or not uij_path.is_file():
+                    missing_evidence.append("UI işlem günlüğü dosyası (uia-adimlari.json) bulunamadı")
+                else:
+                    try:
+                        raw_uij = uij_path.read_text(encoding="utf-8").strip()
+                        if not raw_uij or raw_uij == "{}":
+                            missing_evidence.append("UI işlem günlüğü (uia-adimlari.json) dosyası boş ({})")
+                        else:
+                            uij_json = json.loads(raw_uij)
+                            if obs is not None and uij_json != obs:
+                                contradictions.append("UI işlem günlüğü (uia-adimlari.json) ile sonuc.json gözlemi çelişiyor.")
+                    except Exception as exc:
+                        contradictions.append(f"UI işlem günlüğü okuma hatası: {exc}")
+
         except Exception as exc:
             contradictions.append(f"UI raporu okuma hatası: {exc}")
     else:
-        # Test runner seviyesinde ATLANDI veya HATA ise UI raporu olmaması normaldir
-        if xml_result not in ("ATLANDI", "HATA"):
+        # Test runner seviyesinde ATLANDI veya HATA ise ve link'te ui_report yoksa aranmaz
+        l_stat = link_data.get("status") if link_data else None
+        if xml_result not in ("ATLANDI", "HATA") and l_stat not in ("ATLANDI", "HATA"):
             missing_evidence.append(f"Bağlı UI raporu bulunamadı: {link_data.get('ui_report') if link_data else 'kayıt yok'}")
 
     # --- 4. Yaşam Döngüsü Raporu İncelemesi ---
     life_data = None
     life_result = None
+    life_obs = None
     life_path = resolve_linked_path(folder, link_data.get("lifecycle_report") if link_data else None, root)
     if life_path and life_path.is_file():
         info["links"].append({"name": "Yaşam Döngüsü sonuc.json", "path": life_path, "desc": "Süreç yaşam döngüsü kanıtı", "exists": True})
@@ -383,30 +487,172 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                 if not isinstance(life_obs, dict) or not life_obs:
                     missing_evidence.append("Yaşam döngüsü gözlem kaydı (observed) eksik veya boş")
                 else:
-                    life_pid = life_obs.get("identity", {}).get("pid")
-                    life_ticks = str(life_obs.get("identity", {}).get("start_ticks", ""))
-                    if link_pid is not None and life_pid != link_pid:
-                        contradictions.append(f"Yaşam döngüsü PID'si köprü PID'sinden farklı (Yaşam: {life_pid}, Köprü: {link_pid})")
-                    if link_ticks and life_ticks and life_ticks != link_ticks:
-                        contradictions.append("Yaşam döngüsü start_ticks değeri köprü ile uyuşmuyor")
+                    life_run_id = life_data.get("run_id")
+                    if life_run_id is None or not str(life_run_id).strip():
+                        missing_evidence.append("Yaşam döngüsü run_id eksik veya boş.")
+                    elif life_run_id != life_path.parent.name:
+                        contradictions.append(f"Yaşam döngüsü run_id ('{life_run_id}') kendi kayıt klasörünün adıyla ('{life_path.parent.name}') eşleşmiyor.")
+
+                    # Üst expected, observed.expected ve köprü expected_branch üçlü kontrolü
+                    top_expected = life_data.get("expected")
+                    obs_expected = life_obs.get("expected")
+                    link_expected = link_data.get("expected_branch") if link_data else None
+
+                    if top_expected is None or not str(top_expected).strip():
+                        missing_evidence.append("Yaşam döngüsü üst expected değeri eksik veya boş.")
+                    if obs_expected is None or not str(obs_expected).strip():
+                        missing_evidence.append("Yaşam döngüsü observed.expected değeri eksik veya boş.")
+
+                    if top_expected and obs_expected and top_expected != obs_expected:
+                        contradictions.append(f"Yaşam döngüsü üst expected başlangıç modu ('{top_expected}') ile observed.expected ('{obs_expected}') eşleşmiyor.")
+                    if top_expected and link_expected and top_expected != link_expected:
+                        contradictions.append(f"Yaşam döngüsü üst expected başlangıç modu ('{top_expected}') köprü başlangıç moduyla ('{link_expected}') eşleşmiyor.")
+                    if obs_expected and link_expected and obs_expected != link_expected:
+                        contradictions.append(f"Yaşam döngüsü observed.expected başlangıç modu ('{obs_expected}') köprü başlangıç moduyla ('{link_expected}') eşleşmiyor.")
+
+                    life_start = life_obs.get("start", {}).get("status") if isinstance(life_obs.get("start"), dict) else None
+                    life_identity = life_obs.get("identity") if isinstance(life_obs.get("identity"), dict) else None
+                    life_pid = life_identity.get("pid") if life_identity else None
+                    life_ticks = str(life_identity.get("start_ticks", "")) if life_identity else ""
 
                     close_info = life_obs.get("close") or {}
                     close_status = close_info.get("status")
                     info["close_status"] = str(close_status if close_status is not None else "-")
 
-                    life_err = life_data.get("error") or life_obs.get("error") or close_info.get("error")
-                    if life_err:
-                        contradictions.append(f"Yaşam döngüsü hata alanı dolu: '{life_err}'")
+                    # Süreç başladı mı yoksa başlamadan erken hata mı oluştu?
+                    process_started = bool(
+                        life_identity
+                        or (life_start in ("BASLATILDI", "MEVCUDA_BAGLANILDI", "BASLATILIYOR"))
+                        or (link_pid is not None)
+                    )
 
-                    if close_status not in ("KAPANDI", "ACIK_BIRAKILDI"):
-                        contradictions.append(f"Yaşam döngüsü kapanış durumu geçersiz: '{close_status}'")
-                    if close_info.get("exited") is False and close_info.get("still_running") is not True:
-                        contradictions.append(f"Süreç kapanışı başarısız (exited=False ve still_running={close_info.get('still_running')})")
+                    # Alt test (observed.test) kontrolü
+                    life_test = life_obs.get("test") or {}
+                    life_test_result = life_test.get("status")
+
+                    # Alt test report_path ile köprü ui_report uyumu
+                    alt_report_raw = life_test.get("report_path")
+                    if process_started or ui_path:
+                        if alt_report_raw is None or not str(alt_report_raw).strip():
+                            missing_evidence.append("Yaşam döngüsü alt test report_path eksik veya boş.")
+                        else:
+                            resolved_alt = resolve_linked_path(folder, alt_report_raw, root)
+                            if resolved_alt and ui_path and resolved_alt.resolve() != ui_path.resolve():
+                                contradictions.append(f"Yaşam döngüsü alt test report_path ({resolved_alt}) köprünün ui_report kaydıyla ({ui_path}) eşleşmiyor.")
+
+                    # Başlatma durumu kontrolü
+                    link_start = link_data.get("start") if link_data else None
+                    if link_start and life_start and link_start != life_start:
+                        contradictions.append(f"Köprü start durumu ({link_start}) yaşam döngüsü start durumu ({life_start}) ile çelişiyor.")
+
+                    # Kapatma durumu kontrolü
+                    link_close = link_data.get("close") if link_data else None
+                    if link_close and close_status and link_close != close_status:
+                        contradictions.append(f"Köprü close durumu ({link_close}) yaşam döngüsü close durumu ({close_status}) ile çelişiyor.")
+
+                    life_err = life_data.get("error") or life_obs.get("error") or close_info.get("error") or life_data.get("cleanup_uncertain")
+                    life_cleanup_err = life_obs.get("cleanup_error")
+                    if life_err and life_result == "GECTI":
+                        contradictions.append(f"Yaşam döngüsü sonucu 'GECTI' fakat hata alanı dolu: '{life_err}'")
+                    if life_cleanup_err and life_result == "GECTI":
+                        contradictions.append(f"Yaşam döngüsü temizleme hatası mevcut (cleanup_error): '{life_cleanup_err}'")
+
+                    if not process_started:
+                        # Erken hata durumu (süreç başlamadan önce hata oluştu):
+                        # Olmayan kimlik veya başarılı kapanış şart koşulmaz, ulaşılan aşamayla tutarlı kayıt incelenir.
+                        if life_result == "GECTI":
+                            contradictions.append("Süreç başlatılmadığı halde yaşam döngüsü sonucu 'GECTI' olamaz.")
+                        if not life_err and not (link_data and link_data.get("error")):
+                            missing_evidence.append("Süreç başlatılamadı hatasında hata açıklaması (error) eksik.")
+                        if life_obs.get("owned") is not False:
+                            contradictions.append(f"Süreç başlatılamadığında owned=False olmalıdır (bulunan: {life_obs.get('owned')})")
+                        if life_start != "BASLATILMADI":
+                            contradictions.append(f"Süreç başlatılamadığında start.status 'BASLATILMADI' olmalıdır (bulunan: '{life_start}')")
+                        if life_test_result != "CALISTIRILMADI":
+                            contradictions.append(f"Süreç başlatılamadığında test.status 'CALISTIRILMADI' olmalıdır (bulunan: '{life_test_result}')")
+                        if close_status != "DENENMEDI":
+                            contradictions.append(f"Süreç başlatılamadığında close.status 'DENENMEDI' olmalıdır (bulunan: '{close_status}')")
+                    else:
+                        # Süreç başladı: Tüm süreç kimliği, sahiplik ve kapanış kontrolleri zorunludur!
+                        if life_identity is None:
+                            missing_evidence.append("Başlatılmış süreçte yaşam döngüsü identity eksik.")
+                        else:
+                            if life_pid is None:
+                                missing_evidence.append("Başlatılmış süreçte PID eksik.")
+                            v_pid_ticks, err_pid_ticks = check_ticks_validity(life_ticks)
+                            if not v_pid_ticks:
+                                missing_evidence.append(f"Yaşam döngüsü {err_pid_ticks}")
+
+                        if link_pid is not None and life_pid != link_pid:
+                            contradictions.append(f"Yaşam döngüsü PID'si köprü PID'sinden farklı (Yaşam: {life_pid}, Köprü: {link_pid})")
+                        if link_ticks and life_ticks and life_ticks != link_ticks:
+                            contradictions.append("Yaşam döngüsü start_ticks değeri köprü ile uyuşmuyor")
+
+                        if ui_result and life_test_result and life_test_result != ui_result:
+                            contradictions.append(f"Yaşam döngüsü alt test sonucu ({life_test_result}) UI sonucuyla ({ui_result}) çelişiyor.")
+                        if link_data and link_data.get("test") and life_test_result and link_data["test"] != life_test_result:
+                            contradictions.append(f"Köprü test durumu ({link_data['test']}) yaşam döngüsü alt test sonucuyla ({life_test_result}) çelişiyor.")
+
+                        lt_id = life_test.get("observed_identity") or {}
+                        lt_pid = lt_id.get("pid")
+                        lt_ticks = str(lt_id.get("start_ticks", ""))
+                        if lt_pid is not None and life_pid is not None and lt_pid != life_pid:
+                            contradictions.append(f"Yaşam döngüsü alt test PID'si ({lt_pid}) yaşam döngüsü PID'sinden ({life_pid}) farklı")
+                        if lt_ticks and life_ticks and lt_ticks != life_ticks:
+                            contradictions.append("Yaşam döngüsü alt test start_ticks değeri yaşam döngüsü ile uyuşmuyor")
+
+                        if close_status not in ("KAPANDI", "ACIK_BIRAKILDI"):
+                            contradictions.append(f"Yaşam döngüsü kapanış durumu geçersiz: '{close_status}'")
+                        if close_info.get("exited") is False and close_info.get("still_running") is not True:
+                            contradictions.append(f"Süreç kapanışı başarısız (exited=False ve still_running={close_info.get('still_running')})")
+
+                        expected_branch = info["branch"]
+                        owned = life_obs.get("owned")
+                        if expected_branch == "Closed":
+                            if owned is not True:
+                                contradictions.append(f"Kapalı başlangıçta (Closed) süreç sahipliği zorunludur (owned=True bekleniyor, bulunan: {owned})")
+                            if life_obs.get("before") != []:
+                                contradictions.append("Kapalı başlangıçta test öncesi çalışan süreç listesi boş olmalıdır (before=[])")
+                            if close_status != "KAPANDI":
+                                contradictions.append(f"Kapalı başlangıçta sürecin KAPANDI durumu doğrulanamadı (durum: '{close_status}')")
+                            if close_info.get("method") != "CloseMainWindow":
+                                contradictions.append(f"Kapatma yöntemi CloseMainWindow değil: '{close_info.get('method')}'")
+                            if close_info.get("exited") is not True:
+                                contradictions.append("Sürecin kapandığı (exited=True) teyit edilemedi")
+                            if close_info.get("request_sent") is not True:
+                                contradictions.append("Kapalı başlangıçta kapatma isteği gönderildiği (request_sent=True) teyit edilemedi")
+                        elif expected_branch == "Existing":
+                            if owned is not False:
+                                contradictions.append(f"Önceden açık uygulamada (Existing) süreç sahiplenilemez (owned=False bekleniyor, bulunan: {owned})")
+                            if close_status != "ACIK_BIRAKILDI":
+                                contradictions.append(f"Önceden açık uygulamada close.status 'ACIK_BIRAKILDI' olmalıdır (durum: '{close_status}')")
+                            if close_info.get("request_sent") is not False:
+                                contradictions.append("Önceden açık uygulamada kapatma isteği gönderilmemelidir (request_sent=False olmalıdır)")
+                            if close_info.get("still_running") is not True:
+                                contradictions.append("Önceden açık uygulamanın çalışmaya devam ettiği (still_running=True) teyit edilemedi")
+
+                    # Yaşam döngüsü günlüğü (yasam-adimlari.json) kontrolü
+                    lj_ref = link_data.get("lifecycle_journal") if link_data else None
+                    lj_path = resolve_linked_path(folder, lj_ref, root) if lj_ref else (life_path.parent / "yasam-adimlari.json")
+                    if not lj_path or not lj_path.is_file():
+                        missing_evidence.append("Yaşam döngüsü günlüğü dosyası (yasam-adimlari.json) bulunamadı")
+                    else:
+                        try:
+                            raw_lj = lj_path.read_text(encoding="utf-8").strip()
+                            if not raw_lj or raw_lj == "{}":
+                                missing_evidence.append("Yaşam döngüsü günlüğü (yasam-adimlari.json) dosyası boş ({})")
+                            else:
+                                lj_json = json.loads(raw_lj)
+                                if life_obs is not None and lj_json != life_obs:
+                                    contradictions.append("Yaşam döngüsü günlüğü (yasam-adimlari.json) ile sonuc.json gözlemi çelişiyor.")
+                        except Exception as exc:
+                            contradictions.append(f"Yaşam döngüsü günlüğü okuma hatası: {exc}")
 
         except Exception as exc:
             contradictions.append(f"Yaşam döngüsü raporu okuma hatası: {exc}")
     else:
-        if xml_result not in ("ATLANDI", "HATA"):
+        l_stat = link_data.get("status") if link_data else None
+        if xml_result not in ("ATLANDI", "HATA") and l_stat not in ("ATLANDI", "HATA"):
             missing_evidence.append(f"Bağlı yaşam döngüsü raporu bulunamadı: {link_data.get('lifecycle_report') if link_data else 'kayıt yok'}")
 
     # Günlük dosyalarını bağlantılara ekle
@@ -432,72 +678,134 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
     if life_data and life_result in ("HATA", "KALDI") and (xml_result == "GECTI" or ui_result == "GECTI"):
         contradictions.append(f"Yaşam döngüsü sonucu '{life_result}' iken test sonucu 'GECTI' (çelişki).")
 
-    # REGRESYON 4: XML skipped iken UI veya yaşam döngüsü çalışıp GECTI diyemez!
+    # XML skipped iken UI veya yaşam döngüsü çalışıp GECTI diyemez!
     if xml_result == "ATLANDI":
         if ui_data and ui_result == "GECTI":
             contradictions.append("pytest XML testin atlandığını (skipped) gösterirken UI raporu GECTI çalıştırma kanıtı içeriyor.")
         if life_data and life_result == "GECTI":
             contradictions.append("pytest XML testin atlandığını (skipped) gösterirken yaşam döngüsü GECTI çalıştırma kanıtı içeriyor.")
 
-    # REGRESYON 1: Link status=HATA/KALDI veya exit_code!=0 iken test GECTI olunamaz!
-    if link_data:
-        l_stat = link_data.get("status")
-        l_exit = link_data.get("exit_code", 0)
-        if (l_stat in ("HATA", "KALDI") or l_exit != 0) and (xml_result == "GECTI" or ui_result == "GECTI"):
-            contradictions.append(f"pytest-link durumu {l_stat} (exit={l_exit}) iken test sonucu GECTI olamaz.")
-        if l_stat == "DOGRULANDI" and xml_result in ("HATA", "KALDI"):
-            contradictions.append(f"pytest-link durumu 'DOGRULANDI' fakat test sonucu '{xml_result}'.")
+    # Link status / exit_code vs XML/UI tutarlılığı
+    l_stat = link_data.get("status") if link_data else None
+    l_exit = link_data.get("exit_code", 0) if link_data else 0
+    l_err = link_data.get("error") if link_data else None
 
-    # REGRESYON 2 & 3: UI veya yaşam döngüsünde hata alanları doluyken GECTI olunamaz!
+    life_test = (life_obs or {}).get("test") if life_obs else None
+    life_test_result = life_test.get("status") if isinstance(life_test, dict) else None
+    life_test_exit = life_test.get("exit_code") if isinstance(life_test, dict) else None
+
+    if (l_stat in ("HATA", "KALDI") or l_exit != 0) and (xml_result == "GECTI" or ui_result == "GECTI"):
+        contradictions.append(f"pytest-link durumu {l_stat} (exit={l_exit}) iken test sonucu GECTI olamaz.")
+    if l_stat == "DOGRULANDI" and (
+        xml_result in ("HATA", "KALDI")
+        or (ui_data and ui_result in ("HATA", "KALDI"))
+        or (life_data and life_result in ("HATA", "KALDI"))
+        or (isinstance(life_test, dict) and (life_test_exit != 0 or life_test_result in ("HATA", "KALDI")))
+    ):
+        contradictions.append("pytest-link durumu 'DOGRULANDI' fakat test sonucu başarısız.")
+    if (ui_result == "GECTI" or (life_data and life_result == "GECTI") or l_stat == "DOGRULANDI") and not isinstance(life_test, dict):
+        missing_evidence.append("Yaşam döngüsü alt test kaydı (observed.test) eksik.")
+    if (ui_result == "GECTI" or (life_data and life_result == "GECTI")) and (isinstance(life_test, dict) and (life_test_exit != 0 or life_test_result in ("HATA", "KALDI"))):
+        contradictions.append(f"Alt test başarısız (çıkış kodu={life_test_exit}, durum='{life_test_result}') iken test sonucu GECTI olamaz.")
+
+    # UI veya yaşam döngüsünde hata alanları doluyken GECTI veya DOGRULANDI olunamaz!
     has_any_error = bool(
         ui_hata or
-        (ui_data and isinstance(ui_data.get("gozlem"), dict) and (ui_data["gozlem"].get("error") or ui_data["gozlem"].get("cleanup_error"))) or
-        (life_data and (life_data.get("error") or (isinstance(life_data.get("observed"), dict) and (life_data["observed"].get("error") or (life_data["observed"].get("close") or {}).get("error")))))
+        (obs and (obs.get("error") or obs.get("cleanup_error") or obs.get("cleanup_journal_error"))) or
+        (life_data and (life_data.get("error") or life_data.get("cleanup_uncertain") or (life_obs and (life_obs.get("error") or life_obs.get("cleanup_error") or (life_obs.get("close") or {}).get("error")))))
     )
-    if has_any_error and (xml_result == "GECTI" or ui_result == "GECTI"):
+    if has_any_error and (xml_result == "GECTI" or ui_result == "GECTI" or (life_data and life_result == "GECTI") or l_stat == "DOGRULANDI"):
         contradictions.append("Hata veya temizleme hatası mevcutken başarılı test sonucu (GECTI) gösterilemez.")
 
-    # Kayıtlı sonuç belirleme
-    if xml_result == "ATLANDI":
+    # Kayıtlı sonuç belirleme:
+    # Pytest XML failure (KALDI) otomasyon hatasından (pytest.fail) kaynaklanıyorsa HATA korunmalı!
+    if xml_result == "ATLANDI" or l_stat == "ATLANDI":
         recorded_result = "ATLANDI"
-    elif ui_result == "KALDI" or xml_result == "KALDI" or (life_data and life_result == "KALDI"):
-        recorded_result = "KALDI"
-    elif ui_result == "HATA" or (link_data and (link_data.get("status") == "HATA" or link_data.get("exit_code", 0) != 0)) or has_any_error or xml_result == "HATA":
+    elif (
+        ui_result == "HATA"
+        or (life_data and life_result == "HATA")
+        or l_stat == "HATA"
+        or l_err
+        or has_any_error
+        or xml_result == "HATA"
+        or (life_data and not isinstance(life_test, dict))
+        or (isinstance(life_test, dict) and (life_test_exit != 0 or life_test_result == "HATA"))
+    ):
         recorded_result = "HATA"
-    elif xml_result == "GECTI" and ui_result == "GECTI" and life_result == "GECTI":
+    elif (
+        ui_result == "KALDI"
+        or xml_result == "KALDI"
+        or (life_data and life_result == "KALDI")
+        or l_stat == "KALDI"
+        or (isinstance(life_test, dict) and life_test_result == "KALDI")
+    ):
+        recorded_result = "KALDI"
+    elif (
+        xml_result == "GECTI"
+        and ui_result == "GECTI"
+        and (life_result == "GECTI" or life_result is None)
+        and l_stat == "DOGRULANDI"
+        and isinstance(life_test, dict)
+        and life_test_result == "GECTI"
+        and life_test_exit == 0
+    ):
         recorded_result = "GECTI"
     else:
-        # Çelişkili veya beklenmeyen durum: XML'e geri dönüp doğrulanmış başarı gösterme!
-        if ui_result:
-            recorded_result = ui_result
-        elif life_result:
-            recorded_result = life_result
-        else:
-            recorded_result = xml_result or "BILINMIYOR"
+        recorded_result = ui_result or (life_result if life_data else None) or xml_result or "BILINMIYOR"
 
     info["recorded_result"] = recorded_result
 
     # Kaynak bazında sonuçlar
     info["source_results"] = {
         "xml": xml_result or "-",
-        "link": (link_data.get("status") if link_data else None) or "-",
+        "link": l_stat or "-",
         "ui": ui_result or "-",
         "lifecycle": life_result or "-",
     }
 
     # Eğer kaydedilmiş sonuç GECTI ise, TÜM GECTI gereksinimleri eksiksiz sağlanmalıdır:
     if recorded_result == "GECTI":
+        if l_stat != "DOGRULANDI":
+            contradictions.append(f"Başarılı koşuda köprü durumu 'DOGRULANDI' olmalıdır (bulunan: '{l_stat}')")
+        if link_pid is None:
+            missing_evidence.append("Başarılı koşuda köprü process_id eksik.")
+        v_lticks, err_lticks = check_ticks_validity(link_data.get("process_start_ticks") if link_data else None)
+        if not v_lticks:
+            missing_evidence.append(f"Başarılı koşuda köprü {err_lticks}")
+        exp_states = link_data.get("expected_states") if link_data else None
+        obs_states = link_data.get("observed_states") if link_data else None
+        if not exp_states or not isinstance(exp_states, list) or len(exp_states) != 3:
+            missing_evidence.append("Başarılı koşuda köprü beklenen durumlar (expected_states) eksik veya geçersiz")
+        if not obs_states or not isinstance(obs_states, list) or len(obs_states) != 3:
+            missing_evidence.append("Başarılı koşuda köprü gözlemlenen durumlar (observed_states) eksik veya geçersiz")
+        if exp_states and obs_states and exp_states != obs_states:
+            contradictions.append(f"Başarılı koşuda beklenen durumlar ({exp_states}) gözlemlenen durumlarla ({obs_states}) uyuşmalıdır.")
+
         if not ui_data:
             missing_evidence.append("GECTI koşusu için UI raporu bulunamadı.")
         else:
             if ui_result != "GECTI":
                 contradictions.append(f"GECTI koşusunda UI test_sonucu GECTI değil: '{ui_result}'")
-            obs = ui_data.get("gozlem") or {}
-            init = obs.get("initial")
-            chg = obs.get("changed")
-            fnl = obs.get("final")
-            exp_chg = obs.get("expected_changed")
-            rest = obs.get("restored")
+            ui_obs = obs or {}
+            if ui_obs.get("schema_version") != 1:
+                contradictions.append(f"Başarılı koşuda UI şema sürümü 1 olmalıdır (bulunan: {ui_obs.get('schema_version')})")
+            if ui_obs.get("mode") != "Exercise":
+                contradictions.append(f"Başarılı koşuda UI modu 'Exercise' olmalıdır (bulunan: '{ui_obs.get('mode')}')")
+            if ui_obs.get("phase") != "completed":
+                contradictions.append(f"Başarılı koşuda UI aşaması 'completed' olmalıdır (bulunan: '{ui_obs.get('phase')}')")
+            if ui_obs.get("mutation_attempted") is not True:
+                contradictions.append("Başarılı koşuda mutation_attempted=True olmalıdır")
+            if ui_obs.get("cleanup_attempted") is not True:
+                contradictions.append("Başarılı koşuda cleanup_attempted=True olmalıdır")
+            if ui_obs.get("changed_verified") is not True:
+                contradictions.append("Başarılı koşuda changed_verified=True olmalıdır")
+            if ui_obs.get("restored") is not True:
+                contradictions.append("Başarılı koşuda restored=True olmalıdır")
+
+            init = ui_obs.get("initial")
+            chg = ui_obs.get("changed")
+            fnl = ui_obs.get("final")
+            exp_chg = ui_obs.get("expected_changed")
 
             if init is None or init not in ("Off", "On"):
                 contradictions.append(f"Geçersiz UI başlangıç durumu: '{init}'")
@@ -512,8 +820,6 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                 contradictions.append(f"UI değişen değeri beklenen karşıt değerle uyuşmuyor (beklenen: {exp_chg}, gerçekleşen: {chg})")
             if init is not None and fnl is not None and init != fnl:
                 contradictions.append(f"UI kutu değeri başlangıç durumuna dönmedi (başlangıç: {init}, son: {fnl})")
-            if not rest:
-                contradictions.append("UI kutusunun geri yüklendiği doğrulanmadı (restored=False)")
             if not info["guard_start_idle"] or not info["guard_end_idle"]:
                 contradictions.append("Start butonu başlangıçta veya bitişte boşta/pasif değil")
 
@@ -525,23 +831,28 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
             if life_data.get("exit_code") != 0:
                 contradictions.append(f"Yaşam döngüsü çıkış kodu 0 değil: {life_data.get('exit_code')}")
 
-            expected_branch = info["branch"]
-            close_info = (life_data.get("observed") or {}).get("close") or {}
-            c_stat = close_info.get("status")
-            if expected_branch not in ("Existing", "Closed"):
-                contradictions.append(f"Geçersiz başlangıç modu: '{expected_branch}'")
-            elif expected_branch == "Closed":
-                if c_stat != "KAPANDI":
-                    contradictions.append(f"Kapalı başlangıçta sürecin KAPANDI durumu doğrulanamadı (durum: '{c_stat}')")
-                if close_info.get("method") != "CloseMainWindow":
-                    contradictions.append(f"Kapatma yöntemi CloseMainWindow değil: '{close_info.get('method')}'")
-                if close_info.get("exited") is not True:
-                    contradictions.append("Sürecin kapandığı (exited=True) teyit edilemedi")
-            elif expected_branch == "Existing":
-                if c_stat != "ACIK_BIRAKILDI":
-                    contradictions.append(f"Açık başlangıçta sürecin ACIK_BIRAKILDI durumu doğrulanamadı (durum: '{c_stat}')")
-                if close_info.get("still_running") is not True:
-                    contradictions.append("Önceden açık sürecin çalışmaya devam ettiği (still_running=True) teyit edilemedi")
+            # Alt test (observed.test) kontrolü: varlığı, sonucu, çıkış kodu ve kimliği eksiksiz olmalı
+            life_test = (life_data.get("observed") or {}).get("test")
+            if not life_test or not isinstance(life_test, dict):
+                missing_evidence.append("Başarılı koşuda yaşam döngüsü alt test (observed.test) kaydı eksik.")
+            else:
+                if life_test.get("status") != "GECTI":
+                    contradictions.append(f"Başarılı koşuda alt test sonucu GECTI değil: '{life_test.get('status')}'")
+                if life_test.get("exit_code") != 0:
+                    contradictions.append(f"Başarılı koşuda alt test çıkış kodu sıfır değil: {life_test.get('exit_code')}")
+                alt_identity = life_test.get("observed_identity")
+                if not alt_identity or not isinstance(alt_identity, dict):
+                    missing_evidence.append("Alt testte gözlemlenen süreç kimliği (observed_identity) eksik.")
+                else:
+                    alt_pid = alt_identity.get("pid")
+                    alt_ticks = str(alt_identity.get("start_ticks", ""))
+                    if alt_pid is None or (life_pid is not None and alt_pid != life_pid):
+                        contradictions.append(f"Alt test PID'si ({alt_pid}) hedef süreç PID'sinden ({life_pid}) farklı.")
+                    v_aticks, err_aticks = check_ticks_validity(alt_ticks)
+                    if not v_aticks:
+                        missing_evidence.append(f"Alt test {err_aticks}")
+                    elif life_ticks and alt_ticks != life_ticks:
+                        contradictions.append("Alt test start_ticks değeri hedef süreç start_ticks ile uyuşmuyor.")
 
     # --- 6. Nihai Doğrulama Durumu ve Rozet ---
     all_reasons = contradictions + missing_evidence

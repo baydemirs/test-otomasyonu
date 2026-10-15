@@ -64,7 +64,7 @@ def parse_tasks(text):
     return tasks
 
 
-def validate_tasks(root=None, state_path=None):
+def validate_tasks(root=None, state_path=None, check_evidence=True):
     root = (ROOT if root is None else Path(root)).resolve()
     state_path = root/'durum/gorev-durumu.yaml' if state_path is None else Path(state_path)
     tasks = parse_tasks(state_path.read_text(encoding='utf-8'))
@@ -94,10 +94,11 @@ def validate_tasks(root=None, state_path=None):
         if task['durum'] not in statuses:
             raise ValueError('Geçersiz görev durumu: '+identifier)
         require_file(task['dosya'], 'Görev dosyası')
-        if task['durum'] == 'tamamlandi' and not task['kanitlar']:
-            raise ValueError('Tamamlanan görevin kanıtı boş: '+identifier)
-        for reference in task['kanitlar']:
-            require_file(reference, 'Görev kanıt dosyası')
+        if check_evidence:
+            if task['durum'] == 'tamamlandi' and not task['kanitlar']:
+                raise ValueError('Tamamlanan görevin kanıtı boş: '+identifier)
+            for reference in task['kanitlar']:
+                require_file(reference, 'Görev kanıt dosyası')
         if len(set(task['bagimliliklar'])) != len(task['bagimliliklar']):
             raise ValueError('Yinelenen bağımlılık: '+identifier)
     indegree = {identifier: 0 for identifier in by_id}
@@ -176,23 +177,27 @@ def check(report_path):
     expected_verdict = module.classify(observed, 'Exercise', report['komutlar'][0]['cikis_kodu'])
     if expected_verdict != report['test_sonucu'] or expected_verdict != 'GECTI':
         raise ValueError('Başarılı demo kabul koşulları sağlanmadı.')
-    validate_tasks()
-    for file in [ROOT/'README.md', ROOT/'gorevler/GOREV-001-ilk-demo-testi.md', ROOT/'gereksinimler/CANRAT-UI-002.md', ROOT/'raporlar/canrat-ui-002.md']:
-        for link in re.findall(r'\]\(([^)]+)\)', file.read_text(encoding='utf-8')):
-            if '://' not in link and not (file.parent/link.split('#')[0]).exists():
-                raise ValueError('Eksik belge/kanıt bağlantısı: ' + link)
-    print('DEMO_KANITI_DOGRULANDI: CANRAT-UI-002; sürümler, günlük, görev alanları ve belge yolları tutarlı.')
+    print('DEMO_KANITI_DOGRULANDI: CANRAT-UI-002; sürümler, günlük, süreç kimliği ve sonuç tutarlı.')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--report', type=Path)
-    group.add_argument('--tasks-only', action='store_true')
+    group.add_argument('--tasks-only', action='store_true', help='Görev kaydını ve kanıt dosyalarının varlığını denetler.')
+    group.add_argument('--structure-only', action='store_true', help='Yalnızca görev kimliklerini, görev dosyalarını ve bağımlılıkları denetler; kanıt varlığı aramaz.')
     args = parser.parse_args()
     try:
-        if args.tasks_only:
-            tasks = validate_tasks()
+        if args.structure_only:
+            tasks = validate_tasks(check_evidence=False)
+            print(f'GOREV_YAPISI_DOGRULANDI: {len(tasks)} benzersiz görev; kimlikler, dosyalar ve bağımlılıklar geçerli. Geçmiş kanıtların içeriği ve dosya varlığı bu modda doğrulanmadı.')
+        elif args.tasks_only:
+            tasks = validate_tasks(check_evidence=True)
+            for file in [ROOT/'README.md', ROOT/'gorevler/GOREV-001-ilk-demo-testi.md', ROOT/'gereksinimler/CANRAT-UI-002.md', ROOT/'raporlar/canrat-ui-002.md']:
+                if file.exists():
+                    for link in re.findall(r'\]\(([^)]+)\)', file.read_text(encoding='utf-8')):
+                        if '://' not in link and not (file.parent/link.split('#')[0]).exists():
+                            raise ValueError('Eksik belge/kanıt bağlantısı: ' + link)
             print(f'GOREV_KAYDI_DOGRULANDI: {len(tasks)} benzersiz görev; dosyalar, kanıtlar ve bağımlılıklar geçerli.')
         else:
             check(args.report)

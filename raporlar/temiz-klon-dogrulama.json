@@ -1,0 +1,19 @@
+{
+    "yeni_dogrulanmis_kosu":  {
+                                  "kaynak_surumu":  "b283d7f569829d357296b891ef1d94687f0dd79a (yerel GOREV-004 izole test ve demo_dogrula duzeltmeleri ile)",
+                                  "html_rapor":  "DOGRULANDI",
+                                  "pytest_dogrula":  "DOGRULANDI",
+                                  "pytest_exit_code":  0,
+                                  "birim_testleri":  "67 passed, 1 skipped, 14 subtests passed",
+                                  "kanit_dosyalari_korundu":  true,
+                                  "html_rapor_yolu":  "raporlar/kosular/pytest-gecis-6b26d20f2a37499d988fc9fa6f329b57/kapali/rapor.html",
+                                  "tarih_utc":  "2026-10-15T07:22:50.8801281Z",
+                                  "temiz_klon_dizini":  "C:\\Users\\Admin\\AppData\\Local\\Temp\\canrat-clean-desktop-bb1b5c670b1e499b9dcdb3d83158cb0d",
+                                  "run_klasoru":  "raporlar/kosular/pytest-gecis-6b26d20f2a37499d988fc9fa6f329b57/kapali"
+                              },
+    "onceki_gecici_kosu":  {
+                               "durum":  "SILINDI",
+                               "not":  "Onceki calistirmada C:\\Users\\Admin\\AppData\\Local\\Temp altindaki gecici calisma alani temizlenirken kanitlar silinmistir; o kosuya ait orijinal dosyalar mevcut degildir."
+                           },
+    "aciklama":  "Temiz Windows kopyasinda, gecmis kanitlar olmadan calistirilan Closed masaustu kosusu ve dogrulamasi."
+}
