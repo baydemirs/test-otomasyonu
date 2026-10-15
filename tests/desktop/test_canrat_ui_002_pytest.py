@@ -37,7 +37,7 @@ def test_canrat_ui_002_via_lifecycle(request):
     record = {
         'task': 'GOREV-005', 'adapter': 'powershell',
         'test_id': 'CANRAT-UI-002', 'run_id': evidence.name,
-        'expected_branch': expected, 'expected_states': ['Off', 'On', 'Off'],
+        'expected_branch': expected, 'expected_states': None,
         'time_utc': datetime.now(timezone.utc).isoformat(),
         'command': command, 'timeout_seconds': 125, 'status': 'HATA',
         'versions': {
@@ -76,17 +76,22 @@ def test_canrat_ui_002_via_lifecycle(request):
         nested.relative_to(ROOT)
         child = json.loads(nested.read_text(encoding='utf-8'))
         observed = child['gozlem']
+        initial = observed.get('initial')
+        if initial not in ('Off', 'On'):
+            raise ValueError(f"Geçersiz veya bilinmeyen başlangıç durumu: '{initial}'")
+        opposite = 'On' if initial == 'Off' else 'Off'
+        record['expected_states'] = [initial, opposite, initial]
         record['ui_report'] = str(nested.relative_to(ROOT))
         record['ui_journal'] = str((nested.parent/'uia-adimlari.json').relative_to(ROOT))
         record['lifecycle_journal'] = str((path.parent/'yasam-adimlari.json').relative_to(ROOT))
-        record['observed_states'] = [observed['initial'], observed['changed'], observed['final']]
+        record['observed_states'] = [observed.get('initial'), observed.get('changed'), observed.get('final')]
         record['process_id'] = life['observed']['identity']['pid']
         record['process_start_ticks'] = life['observed']['identity']['start_ticks']
         record['start'] = life['observed']['start']['status']
         record['test'] = life['observed']['test']['status']
         record['close'] = life['observed']['close']['status']
-        if record['observed_states'] != record['expected_states'] or observed['restored'] is not True:
-            raise ValueError('Off → On → Off ve geri yükleme doğrulanmadı.')
+        if record['observed_states'] != record['expected_states'] or observed.get('restored') is not True:
+            raise ValueError(f"{record['expected_states'][0]} → {record['expected_states'][1]} → {record['expected_states'][2]} ve geri yükleme doğrulanmadı.")
         record['status'] = 'DOGRULANDI'
     except (OSError, ValueError, KeyError, TypeError, IndexError, subprocess.TimeoutExpired) as exc:
         error = str(exc)

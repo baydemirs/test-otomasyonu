@@ -155,11 +155,11 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
         "start_status": "-",
         "close_status": "-",
         "states": {
-            "initial_expected": "Off",
+            "initial_expected": "-",
             "initial_observed": "-",
-            "changed_expected": "On",
+            "changed_expected": "-",
             "changed_observed": "-",
-            "final_expected": "Off",
+            "final_expected": "-",
             "final_observed": "-",
             "restored": False,
         },
@@ -404,6 +404,11 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                     info["states"]["changed_observed"] = changed if changed is not None else "-"
                     info["states"]["final_observed"] = final if final is not None else "-"
                     info["states"]["restored"] = bool(restored)
+
+                    if info["states"]["initial_expected"] == "-" and initial in ("Off", "On"):
+                        info["states"]["initial_expected"] = initial
+                        info["states"]["changed_expected"] = "On" if initial == "Off" else "Off"
+                        info["states"]["final_expected"] = initial
 
                     # Link ile UI observed_states uyumu
                     ui_states_list = [initial, changed, final]
@@ -820,6 +825,10 @@ def evaluate_run_evidence(folder_path, root=None, expected_branch=None):
                 contradictions.append(f"UI değişen değeri beklenen karşıt değerle uyuşmuyor (beklenen: {exp_chg}, gerçekleşen: {chg})")
             if init is not None and fnl is not None and init != fnl:
                 contradictions.append(f"UI kutu değeri başlangıç durumuna dönmedi (başlangıç: {init}, son: {fnl})")
+            if exp_states and init in ("Off", "On"):
+                expected_from_ui = [init, "On" if init == "Off" else "Off", init]
+                if exp_states != expected_from_ui:
+                    contradictions.append(f"Köprü beklenen durumları ({exp_states}) UI başlangıç durumundan türetilen beklentiyle ({expected_from_ui}) eşleşmiyor.")
             if not info["guard_start_idle"] or not info["guard_end_idle"]:
                 contradictions.append("Start butonu başlangıçta veya bitişte boşta/pasif değil")
 

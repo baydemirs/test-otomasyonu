@@ -59,7 +59,7 @@ Açık tek örneğe bağlanmak için ayrı boş klasör ve `--canrat-initial Exi
 
 ## Sonuçları okuma ve kapsam
 
-Masaüstü koşusunda `<run>/pytest.xml` pytest sonucudur; `<run>/pytest-link.json` aynı koşunun yaşam döngüsü `sonuc.json` ve UI `sonuc.json` yollarını içerir. Yalnız pytest çıkış kodu başarı kanıtı değildir; `otomasyon/dogrulama/pytest_dogrula.py` bağlı JSON'ları, süreç sahipliğini ve Off → On → Off durumlarını denetler. Eski koşu kayıtları tarihsel kanıttır; taşınan kaynakların güncel sürümüne ait kanıt sayılmaz.
+Masaüstü koşusunda `<run>/pytest.xml` pytest sonucudur; `<run>/pytest-link.json` aynı koşunun yaşam döngüsü `sonuc.json` ve UI `sonuc.json` yollarını içerir. Yalnız pytest çıkış kodu başarı kanıtı değildir; `otomasyon/dogrulama/pytest_dogrula.py` bağlı JSON'ları, süreç sahipliğini ve başlangıç durumuna göre çift yönlü durum geçişlerini (`Off → On → Off` veya `On → Off → On`) denetler. Eski koşu kayıtları tarihsel kanıttır; taşınan kaynakların güncel sürümüne ait kanıt sayılmaz.
 
 Koşuya ait okunabilir, bağımsız HTML raporu üretmek ve açmak için:
 

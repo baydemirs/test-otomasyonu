@@ -1,6 +1,6 @@
 # Görevlerin güncel durumu ve bağımlılıkları için tek asıl kayıt.
 # Tamamlanma kararları aşağıdaki gerçek koşu ve inceleme kanıtlarına dayanır.
-surum: 33
+surum: 35
 gorevler:
   - id: GOREV-000
     dosya: gorevler/GOREV-000-uygulamayi-incele.md
@@ -72,6 +72,13 @@ gorevler:
     bagimliliklar: [GOREV-004]
     engel: null
     kanitlar: [gorevler/GOREV-009-kanit-guvenligi-ve-rapor-korumasi.md, otomasyon/dogrulama/ortak.py, otomasyon/dogrulama/html_rapor.py, tests/unit/test_html_rapor.py]
+  - id: GOREV-010
+    dosya: gorevler/GOREV-010-cift-yonlu-gecis-destegi.md
+    oncelik: 11
+    durum: tamamlandi
+    bagimliliklar: [GOREV-009]
+    engel: null
+    kanitlar: [gorevler/GOREV-010-cift-yonlu-gecis-destegi.md, otomasyon/dogrulama/ortak.py, otomasyon/dogrulama/pytest_dogrula.py, tests/desktop/test_canrat_ui_002_pytest.py, tests/unit/test_html_rapor.py, raporlar/kosular/pytest-gecis-843ce87a53ad4d419c0f541ab004b6cd/kapali/pytest-link.json, raporlar/kosular/pytest-gecis-843ce87a53ad4d419c0f541ab004b6cd/kapali/rapor.html, raporlar/kosular/pytest-gecis-4b21c9e914484b42859d165961fb3353/acik/pytest-link.json, raporlar/kosular/pytest-gecis-4b21c9e914484b42859d165961fb3353/acik/rapor.html]
 
 
 

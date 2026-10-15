@@ -41,8 +41,8 @@ def check(folder, expected):
             link['run_id'] == folder.name and link['expected_branch'] == expected and
             link['status'] == 'DOGRULANDI' and link['exit_code'] == 0 and
             not link.get('error'), 'Pytest koprusu basarisiz veya eksik.')
-    require(link['expected_states'] == ['Off', 'On', 'Off'] and
-            link['observed_states'] == ['Off', 'On', 'Off'], 'Off-On-Off kaniti eksik.')
+    require(link['expected_states'] in (['Off', 'On', 'Off'], ['On', 'Off', 'On']), 'Gecersiz beklenen durumlar.')
+    require(link['observed_states'] == link['expected_states'], 'Durum gecisi eslesmiyor.')
     require(link['pytest_version'] == '9.1.1', 'Pytest surumu uyusmuyor.')
     require_versions(ROOT, link['versions'], SOURCE_FILES, 'Test surum dosyalari eksik.')
     life_path = project_path(link['lifecycle_report'])
@@ -56,8 +56,12 @@ def check(folder, expected):
             and project_path(life['observed']['test']['report_path']) == ui_path,
             'Pytest ve JSON kanit yollari farkli.')
     ui = read_json(ui_path)
+    initial = ui['gozlem'].get('initial')
+    require(initial in ('Off', 'On'), 'UI baslangic durumu gecersiz.')
+    ui_expected = [initial, 'On' if initial == 'Off' else 'Off', initial]
+    require(link['expected_states'] == ui_expected, 'Köprü beklenen durumları ile UI beklenen durumları eşleşmiyor.')
     require(ui['test_sonucu'] == 'GECTI' and ui['gozlem']['restored'] is True and
-            [ui['gozlem'][key] for key in ('initial', 'changed', 'final')] == ['Off', 'On', 'Off'],
+            [ui['gozlem'][key] for key in ('initial', 'changed', 'final')] == ui_expected,
             'UI sonucu/geri yuklemesi beklenmiyor.')
     v_states, err_states = check_states_match(link['observed_states'], [ui['gozlem'][k] for k in ('initial', 'changed', 'final')])
     require(v_states, err_states)

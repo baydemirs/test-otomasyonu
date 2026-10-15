@@ -14,7 +14,7 @@ from otomasyon.dogrulama.html_rapor import evaluate_run, generate_report, render
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def build_valid_mock_run(folder_path, branch='Closed', pid=12345, ticks='639000000000000000'):
+def build_valid_mock_run(folder_path, branch='Closed', pid=12345, ticks='639000000000000000', initial='Off'):
     """Eksiksiz, doğrulanabilir sentetik bir test koşu seti oluşturur."""
     f = Path(folder_path)
     run_dir = f / 'acik' if branch == 'Existing' else f / 'kapali'
@@ -23,6 +23,9 @@ def build_valid_mock_run(folder_path, branch='Closed', pid=12345, ticks='6390000
     ui_dir.mkdir(parents=True, exist_ok=True)
     life_dir = f / 'mock_life'
     life_dir.mkdir(parents=True, exist_ok=True)
+
+    exp_changed = 'On' if initial == 'Off' else 'Off'
+    expected_states = [initial, exp_changed, initial]
 
     # 1. pytest.xml
     (run_dir / 'pytest.xml').write_text(
@@ -44,11 +47,11 @@ def build_valid_mock_run(folder_path, branch='Closed', pid=12345, ticks='6390000
             "phase": "completed",
             "process_id": pid,
             "process_start_ticks": ticks,
-            "initial": "Off",
-            "expected_changed": "On",
-            "changed": "On",
+            "initial": initial,
+            "expected_changed": exp_changed,
+            "changed": exp_changed,
             "changed_verified": True,
-            "final": "Off",
+            "final": initial,
             "restored": True,
             "mutation_attempted": True,
             "cleanup_attempted": True,
@@ -109,8 +112,8 @@ def build_valid_mock_run(folder_path, branch='Closed', pid=12345, ticks='6390000
         "test_id": "CANRAT-UI-002",
         "run_id": run_dir.name,
         "expected_branch": branch,
-        "expected_states": ["Off", "On", "Off"],
-        "observed_states": ["Off", "On", "Off"],
+        "expected_states": expected_states,
+        "observed_states": expected_states,
         "time_utc": "2026-10-14T12:00:00+00:00",
         "duration_seconds": 7.94,
         "exit_code": 0,
@@ -1438,6 +1441,101 @@ class TestHtmlRapor(unittest.TestCase):
             info = evaluate_run(run_dir)
             self.assertEqual(info['verification_status'], 'DOGRULANAMADI')
             self.assertTrue(any('identity eksik' in r for r in info['verification_reasons']))
+
+    # GOREV-010: Çift Yönlü Durum Geçiş Desteği (Off ↔ On)
+    def test_bidirectional_on_off_on_produces_dogrulandi(self):
+        """On → Off → On döngüsü eksiksiz kanıtlarla GECTI ve DOGRULANDI üretmelidir."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir, _, _ = build_valid_mock_run(tmpdir, branch='Closed', initial='On')
+            info = evaluate_run(run_dir)
+            self.assertEqual(info['recorded_result'], 'GECTI')
+            self.assertEqual(info['verification_status'], 'DOGRULANDI')
+            self.assertEqual(info['badge_text'], 'GECTI (DOĞRULANDI)')
+            self.assertEqual(info['badge_class'], 'pass')
+            self.assertEqual(len(info['verification_reasons']), 0)
+            self.assertEqual(info['states']['initial_expected'], 'On')
+            self.assertEqual(info['states']['initial_observed'], 'On')
+            self.assertEqual(info['states']['changed_expected'], 'Off')
+            self.assertEqual(info['states']['changed_observed'], 'Off')
+            self.assertEqual(info['states']['final_expected'], 'On')
+            self.assertEqual(info['states']['final_observed'], 'On')
+            self.assertTrue(info['states']['restored'])
+
+            html = render_html(info)
+            self.assertIn('GECTI (DOĞRULANDI)', html)
+            self.assertIn('On', html)
+            self.assertIn('Off', html)
+
+    def test_bidirectional_on_off_on_existing_branch_produces_dogrulandi(self):
+        """Önceden açık uygulamada (Existing) On → Off → On döngüsü eksiksiz kanıtlarla doğrulanmalıdır."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir, _, _ = build_valid_mock_run(tmpdir, branch='Existing', initial='On')
+            info = evaluate_run(run_dir)
+            self.assertEqual(info['recorded_result'], 'GECTI')
+            self.assertEqual(info['verification_status'], 'DOGRULANDI')
+            self.assertEqual(info['branch'], 'Existing')
+            self.assertEqual(info['close_status'], 'ACIK_BIRAKILDI')
+            self.assertEqual(info['states']['initial_expected'], 'On')
+            self.assertEqual(info['states']['final_expected'], 'On')
+
+    def test_bidirectional_on_initial_restoration_failure_rejected(self):
+        """On ile başlayan döngüde başlangıca geri dönememe (On → Off → Off) KANIT DOĞRULANAMADI olmalıdır."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir, ui_dir, _ = build_valid_mock_run(tmpdir, branch='Closed', initial='On')
+            ui_path = ui_dir / 'sonuc.json'
+            d = json.loads(ui_path.read_text(encoding='utf-8'))
+            d['gozlem']['final'] = 'Off'
+            d['gozlem']['restored'] = False
+            ui_path.write_text(json.dumps(d), encoding='utf-8')
+            (ui_dir / 'uia-adimlari.json').write_text(json.dumps(d['gozlem']), encoding='utf-8')
+
+            info = evaluate_run(run_dir)
+            self.assertEqual(info['verification_status'], 'DOGRULANAMADI')
+            self.assertTrue(any('başlangıç durumuna dönmedi' in r or 'restored=True' in r for r in info['verification_reasons']))
+
+    def test_bidirectional_on_initial_toggle_failure_rejected(self):
+        """On ile başlayan döngüde karşıt duruma geçememe (On → On → On) KANIT DOĞRULANAMADI olmalıdır."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir, ui_dir, _ = build_valid_mock_run(tmpdir, branch='Closed', initial='On')
+            ui_path = ui_dir / 'sonuc.json'
+            d = json.loads(ui_path.read_text(encoding='utf-8'))
+            d['gozlem']['changed'] = 'On'
+            d['gozlem']['changed_verified'] = False
+            ui_path.write_text(json.dumps(d), encoding='utf-8')
+            (ui_dir / 'uia-adimlari.json').write_text(json.dumps(d['gozlem']), encoding='utf-8')
+
+            info = evaluate_run(run_dir)
+            self.assertEqual(info['verification_status'], 'DOGRULANAMADI')
+            self.assertTrue(any('karşıt duruma geçmedi' in r or 'changed_verified=True' in r for r in info['verification_reasons']))
+
+    def test_cross_layer_expectation_mismatch_rejected(self):
+        """Köprü expected_states ile UI başlangıç beklentisi çeliştiğinde KANIT DOĞRULANAMADI olmalıdır."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir, _, _ = build_valid_mock_run(tmpdir, branch='Closed', initial='On')
+            link_path = run_dir / 'pytest-link.json'
+            d = json.loads(link_path.read_text(encoding='utf-8'))
+            # UI On ile başlıyor ama köprüye sabit Off -> On -> Off yazılmış
+            d['expected_states'] = ['Off', 'On', 'Off']
+            link_path.write_text(json.dumps(d), encoding='utf-8')
+
+            info = evaluate_run(run_dir)
+            self.assertEqual(info['verification_status'], 'DOGRULANAMADI')
+            self.assertTrue(any('UI başlangıç durumundan türetilen beklentiyle' in r or 'uyuşmalıdır' in r for r in info['verification_reasons']))
+
+    def test_unknown_or_missing_initial_state_rejected(self):
+        """Bilinmeyen veya geçersiz başlangıç durumunda tahmin yapılamaz; KANIT DOĞRULANAMADI olmalıdır."""
+        for invalid_init in (None, 'Unknown', 'Middle', ''):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                run_dir, ui_dir, _ = build_valid_mock_run(tmpdir, branch='Closed', initial='Off')
+                ui_path = ui_dir / 'sonuc.json'
+                d = json.loads(ui_path.read_text(encoding='utf-8'))
+                d['gozlem']['initial'] = invalid_init
+                ui_path.write_text(json.dumps(d), encoding='utf-8')
+                (ui_dir / 'uia-adimlari.json').write_text(json.dumps(d['gozlem']), encoding='utf-8')
+
+                info = evaluate_run(run_dir)
+                self.assertEqual(info['verification_status'], 'DOGRULANAMADI')
+                self.assertTrue(any('Geçersiz UI başlangıç durumu' in r for r in info['verification_reasons']))
 
 
 if __name__ == '__main__':
