@@ -1,25 +1,27 @@
 # Proje Kapsamı
 
-## Amaç
+## Amaç ve Teslim Hedefi
 
-Açık talimatlarla geliştirilen ve farklı bir geliştirme ajanı veya geliştirici tarafından devralınabilen tek bir test otomasyonu projesi oluşturmak. İlk uygulama CanRat, sonraki hedef ana servis yazılımıdır.
+Açık talimatlarla geliştirilen ve farklı bir geliştirme ajanı veya geliştirici tarafından devralınabilen bir test otomasyonu altyapısı kurmak.
 
-## Bilinenler
+- **Teslim Modeli:** Emirhan otomasyon altyapısını kuracak ve ana servis uygulamasında 1–2 temsilî test geliştirecektir. Projeyi devralan sonraki kişi, ayrıntılı test prosedürünü geliştirme ajanına vererek yeni test ekletecek, testleri çalıştıracak ve sonuçlarını denetleyecektir.
+- **Yeniden Yazmama İlkesi:** Yeni bir test eklemek, her defasında altyapının yeniden yazılmasını gerektirmemelidir. Altyapı; uygulama adaptörü, yaşam döngüsü, test yürütücüsü ve doğrulama katmanlarını modüler sunar.
+- **Yetkili Gereksinim Kuralı:** Test edilen beklenen davranış yetkili gereksinim ve prosedür belgelerinden alınmalıdır; eksik kabul kriterleri geliştirme ajanı tarafından uydurulamaz.
 
-- İlk geliştirme oturumları VS Code içindeki Codex ile yürütüldü; yeni araç kendi erişimini ve onaylarını ayrıca doğrular.
-- CanRat Windows masaüstü uygulamasıdır; pakette Qt 6 bileşenleri vardır.
-- Sağlanan CANRAT_3min.zip, çalıştırılabilir dosya ve derleme çıktıları içerir. Tam kaynak proje yoktur.
-- İlk demo PCAN gerektirmeyecek. Bu, CAN iletişiminin doğrulandığı anlamına gelmez.
-- Servis test prosedürü ileri aşamanın referansıdır; CanRat gereksinimi değildir.
+## Mevcut Doğrulanan Kapsam (CanRat)
 
-## Doğrulanan kapsam
+Küçük demo uygulaması olan CanRat üzerinde tek bir arayüz kontrolünün (`MainWindow.centralwidget.cboxAppendRecieved`) çift yönlü durum geçişleri (`Off → On → Off` ve `On → Off → On`), süreç sahipliği ve bağımsız HTML rapor üretimi doğrulanmıştır. Beklenen sonuç [CANRAT-UI-002](../gereksinimler/CANRAT-UI-002.md) dosyasındadır; geçmiş envanter ve test kanıtları [raporlardadır](../raporlar/).
 
-İlk Windows envanteri ve tek kutu testinin kesin kabul kriterleri kaydedildi. Beklenen sonuç [CANRAT-UI-002](../gereksinimler/CANRAT-UI-002.md) dosyasındadır; geçmiş envanter ve test kanıtları [raporlardadır](../raporlar/). Başka uygulamalar veya CAN haberleşmesi bu kanıtlardan doğrulanmış sayılmaz.
+Bu kanıtlar yalnızca hedeflenen tek kutu için geçerlidir; CAN iletişimi, Start işlemi veya başka pencereler doğrulanmış sayılmaz.
 
-## İlk demo
+## Ana Servis Durumu ve Gelecek Kapsam
 
-Uygulama erişimi doğrulandıktan sonra tek bir gerçek işlev testi, sonuç/kanıt kaydı, kontrollü yanlış sonucu yakalama, çalıştırma hatası ve kesintiden sonra devam denetimi. Ön inceleme aracı yalnızca erişim kanıtı toplar; işlev testi yerine geçmez.
+- **Uygulama Durumu:** Ana servis uygulaması henüz kurulmamıştır. Gerçek gereksinimler ve çalışma ortamı görülmeden altyapının ana servise uygunluğu peşinen doğrulanamaz.
+- **Gelecek İhtiyaçlar:** Ana servis senaryoları, gerçek donanım ortamı, test paketleri/sıralaması, ortam hazırlığı ve insana bağlı adımlar gerçek gereksinimler sağlandığında ayrı görevlerle eklenecektir. RAG ve ek denetim ajanları, ölçülen bir ihtiyaçla değerlendirilecektir.
 
-## Sonraki kapsam
+## Devralma Kabul Ölçütü
 
-Ana servis senaryoları, gerçek donanım ortamı ve insana bağlı adımlar ayrı görevlerle eklenecek. RAG ve ek ajanlar, ölçülen bir ihtiyaç veya açık teslim gereksinimiyle eklenecek. Uygulama paketini veya ana servis yazılımını değiştirmek mevcut kapsamda değildir.
+Projenin devir başarısı şu ölçüte dayanır: Yeni bir kişi ve geliştirme ajanı, proje belgelerini ve test prosedürünü kullanarak altyapıyı baştan yazmadan yeni bir test ekleyebilmeli, çalıştırabilmeli ve kanıtlarını denetleyebilmelidir.
+
+> [!IMPORTANT]
+> Bu devralma kabulü projenin nihai teslim hedefidir; henüz farklı bir kişi/ajan ile gerçek bir devralma denemesi yapılarak doğrulanmamıştır.

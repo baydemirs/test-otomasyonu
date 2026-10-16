@@ -54,7 +54,32 @@ Sahiplik yalnız başarılı başlatma ile edinilir; her işlem PID + UTC başla
 
 2026-10-14 GOREV-006, pywinauto 0.6.9 ile gerçek CanRat üzerinde tamamlanan karşılaştırma denemesidir. Sonuçlar [karşılaştırma raporunda](../raporlar/pywinauto-karsilastirma.md), deneme kodu ve sürüm bilgisi `otomasyon/arsiv/pywinauto/` altındadır. Aktif pytest testinde adaptör seçimi yoktur; PowerShell/UIA tek varsayılan yoldur. Tarihsel koşu kanıtları değiştirilmez. Karşılaştırmanın sınırı tek kontrol ve tek gerçek CanRat sürümüdür; sonuç başka Qt/Windows sürümlerine otomatik genellenmez.
 
-## Karar 12 Gelecek ihtiyaç: Ortam hazırlığı, bağımlılık ve temizlik akışı
+## Karar 12 Gelecek ihtiyaçları: Ana servis otomasyonu gereksinimleri
 
-Ana servis yazılımında bazı senaryolar ortam hazırlığına veya başka testlerin sonuçlarına bağlı olabilir. Gerçek gereksinimler geldiğinde hazırlık, bağımlılık ve temizlik akışı tasarlanacaktır. Şimdilik bu işlevler geliştirilmez ve varsayımsal örnek senaryo üretilmez.
+Ana servis uygulaması kurulduğunda ve gerçek gereksinimler sağlandığında değerlendirilecek ihtiyaçlar:
+
+1. **Test Grupları ve Yürütme Sırası:** Testlerin mantıksal gruplara ayrılması, açık yürütme sırası ve senaryo önkoşullarının tanımlanması.
+2. **Ortam Hazırlığı ve Temizlik:** Test öncesi ortam hazırlığı, testler arası veri/durum bağımlılıkları ve her test/grup sonrası temizlik mekanizmaları.
+3. **Süre Sınırlı Veri Bekleme:** Tamamlanma koşuluna bağlı, kesin zaman aşımı sınırına sahip veri bekleme ve durum yoklama mekanizmaları.
+4. **Hata ve Durdurma Kuralları:** Test hatası sonrasında devam etme, bağımlı testleri atlama veya tüm koşuyu durdurma kuralları.
+5. **Kanıt ve Koşu Özeti:** Her test için bağımsız ham kanıt üretimi ve tüm test grubunu özetleyen toplu koşu raporu.
+6. **Alternatif Erişim Yöntemleri:** Standart UIA ile okunamayan özel kontroller için uygulama adaptöründe doğrulanmış alternatif erişim yöntemleri.
+
+> [!WARNING]
+> Yukarıdaki maddeler ana servis aşamasında ele alınacak gelecek ihtiyaçlarıdır. Bunlar tamamlanmış özellik olarak gösterilemez; gerçek gereksinimler görülmeden varsayımsal uygulama kodu geliştirilmez.
+
+## Karar 13 Geliştirme ajanı ile test yürütmesinin kesin ayrımı
+
+Geliştirme ajanı test senaryolarını geliştirir, adaptör kodlarını tamamlar ve belgelerin bakımını yapar. Test çalıştırma anında ise yürütme sırası, süre sınırları, assert kontrolleri ve sonuç kararları tamamen kayıtlı kod ve kurallarla belirlenir. Test icrası ve karar mekanizması LLM’in anlık tercihlerine ya da dinamik yorumlarına bırakılmaz.
+
+## Karar 14 Yeni test ekleme mimarisi ve altyapının yeniden yazılmaması
+
+Yeni bir test eklemek otomasyon altyapısının baştan yazılmasını gerektirmez. Altyapı katmanları sorumluluklarına göre ayrılmıştır:
+- `otomasyon/baglanti/`: Hedef uygulama ve Windows etkileşim adaptörü.
+- `otomasyon/yurutme/`: Süreç başlatma, yaşam döngüsü ve süre sınırları.
+- `tests/`: Pytest senaryoları ve birim testleri.
+- `otomasyon/dogrulama/`: Test sonucu ve kanıt doğrulama mantığı.
+
+Yeni test ekleyen geliştirici veya ajan, mevcut adaptördeki doğrulanmış işlemleri kullanır; yeni bir arayüz işlemi gerekiyorsa bunu senaryo içine gömmek yerine adaptör katmanına ekler. Beklenen davranış yetkili gereksinimden alınır, eksik kabul kriteri uydurulmaz.
+
 
